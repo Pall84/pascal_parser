@@ -1,0 +1,20 @@
+__author__ = 'palleymundsson'
+
+tc_PROGRAM = 1
+tc_VAR = 2
+tc_ARRAY = 3
+tc_OF = 4
+tc_INTEGER = 5
+tc_REAL = 6
+tc_FUNCTION = 7
+tc_PROCEDURE = 8
+tc_BEGIN = 9
+tc_END = 10
+tc_IF = 11
+tc_THEN = 12
+tc_ELSE = 13
+tc_WHILE = 14
+tc_DO = 15
+tc_NOT = 16
+tc_NUMBER = 17
+tc_RELOP = 18
