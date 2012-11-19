@@ -1,6 +1,8 @@
 __author__ = 'palleymundsson'
 
-dt_KEYWORD = 1
-dt_INTEGER = 2
-dt_REAL = 3
-dt_OP = 4
+dt_KEYWORD = "KEYWORD"
+dt_INTEGER = "INTEGER"
+dt_REAL = "REAL"
+dt_OP = "OP"
+dt_ID = "ID"
+dt_NONE = "NONE"

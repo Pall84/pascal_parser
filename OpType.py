@@ -1,9 +1,17 @@
 __author__ = 'palleymundsson'
 
-op_NONE = 1
-op_EQ = 2
-op_NE = 3
-op_LT = 4
-op_GT = 5
-op_LE = 6
-op_GE = 7
+op_NONE = "NONE"
+op_EQ = "EQ"
+op_NE = "NE"
+op_LT = "LT"
+op_GT = "GT"
+op_LE = "LE"
+op_GE = "GE"
+op_PLUS = "PLUS"
+op_MINUS = "MINUS"
+op_OR = "OR"
+op_MULT = "MULT"
+op_DIVIDE = "DIVIDE"
+op_DIV = "DIV"
+op_MOD = "MOD"
+op_AND = "AND"
