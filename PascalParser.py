@@ -24,11 +24,15 @@ class PascalParser:
             token = Token.Token(temp[0][0], temp[0][1], temp[0][2], self.scanner.start_line, self.scanner.start_col, temp[1])
             self.sourceLine.addToken(token)
             self.token = token
+            if self.token.token_code == TokenCode.tc_NEWLINE:
+                self.nextToken()
             if self.token.token_code == TokenCode.tc_COMMENT:
                 self.nextToken()
             if self.token.token_code == TokenCode.tc_ERROR:
                 self.sourceLine.addError('^ Illegal character', token.col)
                 self.nextToken()
+        else:
+            self.sourceLine.printing()
     def match(self, token_code):
         if self.token.token_code == token_code:
             self.nextToken()
@@ -36,7 +40,7 @@ class PascalParser:
         else:
             return False
     def eat_up_to_stop_or_sync_tokens(self, stop_tokens=tuple()):
-        sync_tokens = TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN
+        sync_tokens = TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN, TokenCode.tc_DOT
         sync_and_stop_tokens = sync_tokens + stop_tokens
         run = True
         for token in sync_and_stop_tokens:
@@ -462,7 +466,7 @@ class PascalParser:
 
             # begin optional_statement end
             if not self.match(TokenCode.tc_END):
-                return False, '^ expecting "end"'
+                self.sourceLine.addError('^ expecting "end"', self.token.col)
 
             return True, 'good'
 
@@ -742,7 +746,7 @@ class PascalParser:
             # addop term
             term = self.term()
             if not term[0]:
-                return term
+                self.sourceLine.addError(term[1], self.token.col)
 
             # addop term simple_expression_marked
             return self.simple_expression_marked()
@@ -780,7 +784,7 @@ class PascalParser:
             # mulop factor
             factor = self.factor()
             if not factor[0]:
-                return factor
+                self.sourceLine.addError(factor[1], self.token.col)
 
             # mulop factor term_marked
             return self.term_marked()
@@ -815,7 +819,7 @@ class PascalParser:
             # ( expression
             expression = self.expression()
             if not expression[0]:
-                return expression
+                self.sourceLine.addError(expression[1], self.token.col)
 
             # ( expression )
             if not self.match(TokenCode.tc_RPAREN):
@@ -847,11 +851,11 @@ class PascalParser:
             # ( expression_list
             expression_list = self.expression_list()
             if not expression_list[0]:
-                return expression_list
+                self.sourceLine.addError(expression_list[1], self.token.col)
 
             # ( expression_list )
             if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ expecting ")"'
+                self.sourceLine.addError('^ expecting ")"', self.token.col)
 
             return True, "good"
 

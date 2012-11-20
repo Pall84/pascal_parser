@@ -12,7 +12,7 @@ class SourceLine:
 
     def addToken(self, token ):
         if token.line > self.lineNr:
-            print str(self.lineNr).rjust(3) + ': ' + self.line
+            print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
             for error in self.errors:
                 print error
             self.lineNr = token.line
@@ -27,9 +27,14 @@ class SourceLine:
 
             self.line += token.str
 
+    def printing(self):
+        print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+
     def addError(self, error):
         error.rjust()
         self.errors.append(error)
+        for error in self.errors:
+            print error
 
     def addError(self, error, spaces):
         for i in range(spaces+5):
