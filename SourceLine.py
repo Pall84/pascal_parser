@@ -12,20 +12,26 @@ class SourceLine:
 
     def addToken(self, token ):
         if token.line > self.lineNr:
-            print str(self.lineNr) + ': ' + self.line
+            print str(self.lineNr).rjust(3) + ': ' + self.line
             for error in self.errors:
                 print error
             self.lineNr = token.line
-            self.line = token.str + " "
+            for i in range(token.col-1):
+                token.str = " " + token.str
+            self.line = token.str
             self.errors = []
         else:
-            self.line += token.str + " "
+            #print '%s : %s' %(len(self.line), token.col)
+            for i in range(token.col- len(self.line)):
+                token.str = " " + token.str
+
+            self.line += token.str
 
     def addError(self, error):
         error.rjust()
         self.errors.append(error)
 
     def addError(self, error, spaces):
-        for i in range(spaces+4):
+        for i in range(spaces+5):
             error = " " + error
         self.errors.append(error)

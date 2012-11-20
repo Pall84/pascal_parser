@@ -26,6 +26,9 @@ class PascalParser:
             self.token = token
             if self.token.token_code == TokenCode.tc_COMMENT:
                 self.nextToken()
+            if self.token.token_code == TokenCode.tc_ERROR:
+                self.sourceLine.addError('^ Illegal character', token.col)
+                self.nextToken()
     def match(self, token_code):
         if self.token.token_code == token_code:
             self.nextToken()
@@ -36,6 +39,10 @@ class PascalParser:
         sync_tokens = TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN
         sync_and_stop_tokens = sync_tokens + stop_tokens
         run = True
+        for token in sync_and_stop_tokens:
+            if self.token.token_code == token:
+                run = False
+                break
         while run:
             self.nextToken()
             for token in sync_and_stop_tokens:
@@ -54,38 +61,45 @@ class PascalParser:
 
         return true if input is according to grammar, false otherwise
         """
+        hasError = False
+
         #program
-        if self.match(TokenCode.tc_PROGRAM):
-            # program id
-            if self.match(TokenCode.tc_ID):
-                # program id (
-                if self.match(TokenCode.tc_LPAREN):
-                    # program id ( identifier_list
-                    identifier_list = self.identifier_list()
-                    if identifier_list[0]:
-                        # program id ( identifier_list )
-                        if self.match(TokenCode.tc_RPAREN):
-                            # program id ( identifier_list ) ;
-                            if not self.match(TokenCode.tc_SEMICOL):
-                                pass
-                            else:
-                                self.sourceLine.addError('^ expecting ";"', self.token.col)
-                                self.eat_up_to_stop_or_sync_tokens()
-                        else:
-                            self.sourceLine.addError('^ expecting ")"', self.token.col)
-                            self.eat_up_to_stop_or_sync_tokens()
-                    else:
-                        self.sourceLine.addError(identifier_list[1], self.token.col)
-                        self.eat_up_to_stop_or_sync_tokens()
-                else:
-                    self.sourceLine.addError('^ expecting "("', self.token.col)
-                    self.eat_up_to_stop_or_sync_tokens()
-            else:
-                self.sourceLine.addError('^ expecting "id"', self.token.col)
-                self.eat_up_to_stop_or_sync_tokens()
-        else:
+        if not self.match(TokenCode.tc_PROGRAM):
             self.sourceLine.addError('^ expecting "program"', self.token.col)
+            hasError = True
+
+        # program id
+        if not self.match(TokenCode.tc_ID) and not hasError:
+            self.sourceLine.addError('^ expecting "id"', self.token.col)
+            hasError = True
+
+        # program id (
+        if not self.match(TokenCode.tc_LPAREN) and not hasError:
+            self.sourceLine.addError('^ expecting "("', self.token.col)
+            hasError = True
+
+        if hasError:
+            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ID, TokenCode.tc_COMMA))
+            hasError = False
+
+        # program id ( identifier_list
+        identifier_list = self.identifier_list()
+        if not identifier_list[0]:
+            self.sourceLine.addError(identifier_list[1], self.token.col)
+            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_SEMICOL))
+
+        # program id ( identifier_list )
+        if not self.match(TokenCode.tc_RPAREN):
+            self.sourceLine.addError('^ expecting ")"', self.token.col)
+            hasError = True
+
+        # program id ( identifier_list ) ;
+        if not self.match(TokenCode.tc_SEMICOL) and not hasError:
+            self.sourceLine.addError('^ expecting ";"', self.token.col)
+
+        if hasError:
             self.eat_up_to_stop_or_sync_tokens()
+            hasError = False
 
         # program id ( identifier_list ) ;
         # declarations
@@ -167,27 +181,28 @@ class PascalParser:
         if self.match(TokenCode.tc_VAR):
             # var identifier_list
             identifier_list = self.identifier_list()
-            if identifier_list[0]:
-                # var identifier_list :
-                if self.match(TokenCode.tc_COLON):
-                    # var identifier_list : type
-                    type = self.type()
-                    if type[0]:
-                        # var identifier_list : type ;
-                        if self.match(TokenCode.tc_SEMICOL):
-                            pass
-                        else:
-                            self.sourceLine.addError('^ expecting ";"', self.token.col)
-                            self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_SEMICOL))
-                    else:
-                        self.sourceLine.addError(type[1], self.token.col)
-                        self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_SEMICOL))
-                else:
-                    self.sourceLine.addError('^ expecting ":"', self.token.col)
-                    self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_SEMICOL))
-            else:
-                self.sourceLine.identifier_list(type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_SEMICOL))
+            if not identifier_list[0]:
+                self.sourceLine.addError(identifier_list[1], self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON,TokenCode.tc_ARRAY,TokenCode.tc_INTEGER,
+                                                    TokenCode.tc_REAL, TokenCode.tc_SEMICOL))
+
+            # var identifier_list :
+            if not self.match(TokenCode.tc_COLON):
+                self.sourceLine.addError('^ expecting ":"', self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ARRAY,TokenCode.tc_INTEGER,
+                                                    TokenCode.tc_REAL, TokenCode.tc_SEMICOL))
+
+
+            # var identifier_list : type
+            type = self.type()
+            if not type[0]:
+                self.sourceLine.addError(type[1], self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
+
+            # var identifier_list : type ;
+            if not self.match(TokenCode.tc_SEMICOL):
+                self.sourceLine.addError('^ expecting ";"', self.token.col)
+
 
             # var identifier_list : type ; declarations
             return self.declarations()
@@ -293,8 +308,7 @@ class PascalParser:
             # subprogram_head declarations
             declarations = self.declarations()
             if not declarations[0]:
-                self.sourceLine.addError(declarations[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_BEGIN))
+                return declarations
 
             # subprogram_head declarations compound_statement
             return self.compound_statement()
@@ -480,7 +494,7 @@ class PascalParser:
 
         # error
         else:
-            self.sourceLine.addError(statement[1], self.token.col)
+            return statement
     def statement_list_marked(self):
         """ implements the CFG
 
@@ -493,11 +507,8 @@ class PascalParser:
         if self.match(TokenCode.tc_SEMICOL):
             # ; statement
             statement = self.statement()
-            if statement[0]:
-                pass
-            else:
-                self.sourceLine.addError(statement[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens(tuple(TokenCode.tc_SEMICOL))
+            if not statement[0]:
+                return statement
 
             # ; statement statement_list_marked
             return self.statement_list_marked()
@@ -529,20 +540,28 @@ class PascalParser:
             # if expression
             expression = self.expression()
             if not expression[0]:
-                return expression
+                self.sourceLine.addError(expression[1], self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # if expression then
             if not self.match(TokenCode.tc_THEN):
-                return False, '^ expecting "then"'
+                self.sourceLine.addError('^ expecting "then"', self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # if expression then statement
             statement = self.statement()
             if not statement[0]:
-                return statement
+                self.sourceLine.addError(statement[1], self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # if expression then statement else
             if not self.match(TokenCode.tc_ELSE):
-                return False, '^ expecting "else"'
+                self.sourceLine.addError('^ expecting "else"', self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # if expression then statement else statement
             return self.statement()
@@ -552,11 +571,15 @@ class PascalParser:
             # while expression
             expression = self.expression()
             if not expression[0]:
-                return expression
+                self.sourceLine.addError(expression[1], self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_DO,TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # while expression do
             if not self.match(TokenCode.tc_DO):
-                return False, '^ expecting "do"'
+                self.sourceLine.addError('^ expecting "do"', self.token.col)
+                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_DO,TokenCode.tc_THEN, TokenCode.tc_ELSE, TokenCode.tc_ID,
+                                                    TokenCode.tc_IF, TokenCode.tc_WHILE))
 
             # while expression do statement
             return self.statement()
@@ -665,7 +688,7 @@ class PascalParser:
 
         # error
         else:
-            return False, '^ expecting "simple_expression"'
+            return simple_expression
     def expression_marked(self):
         """ inplements the CFG
 
@@ -796,7 +819,7 @@ class PascalParser:
 
             # ( expression )
             if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ expecting ")"'
+                self.sourceLine.addError('^ expecting ")"', self.token.col)
 
             return True, 'good'
 
@@ -838,11 +861,12 @@ class PascalParser:
             # [ expression
             expression = self.expression()
             if not expression[0]:
-                return expression
+                self.sourceLine.addError(expression[1], self.token.col)
 
             # [ expression ]
             if not self.match(TokenCode.tc_RBRACK):
-                return False, '^ expecting "]"'
+                self.sourceLine.addError('^ expecting "]"', self.token.col)
+
 
             return True, "good"
 
