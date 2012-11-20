@@ -13,7 +13,7 @@ def getLexer():
     id = letter + Rep( letter | digits)
     int_num = digits
     optional_fraction = Opt(Str(".") + int_num)
-    optional_exponent = Opt(Str("E") + Opt(Str("+")|Str("-'")) + int_num )
+    optional_exponent = Opt(Str("E") + Opt(Str("+")|Str("-")) + int_num )
     real_num = int_num + optional_fraction + optional_exponent
     comment = Str("{") + Rep(AnyChar) + Str("}")
 
@@ -76,7 +76,7 @@ def getLexer():
 
 
         (id,                        (TokenCode.tc_ID, DataType.dt_ID, OpType.op_NONE)),
-        (comment,               IGNORE),
+        (comment,                   (TokenCode.tc_COMMENT, DataType.dt_NONE, OpType.op_NONE)),
         (Rep1(Any(" \t\n")),    IGNORE),
         (AnyChar,                   (TokenCode.tc_ERROR, DataType.dt_NONE, OpType.op_NONE))
     ])
