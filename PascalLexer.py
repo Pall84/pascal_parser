@@ -78,7 +78,7 @@ def getLexer():
         (id,                        (TokenCode.tc_ID, DataType.dt_ID, OpType.op_NONE)),
         (comment,                   (TokenCode.tc_COMMENT, DataType.dt_NONE, OpType.op_NONE)),
         (Rep1(Any(" \t")),    IGNORE),
-        (Str('\n'),                 (TokenCode.tc_NEWLINE, DataType.dt_NONE, OpType.op_NONE)),
+        (Any("\n\r"),               (TokenCode.tc_NEWLINE, DataType.dt_NONE, OpType.op_NONE)),
         (AnyChar,                   (TokenCode.tc_ERROR, DataType.dt_NONE, OpType.op_NONE))
     ])
 

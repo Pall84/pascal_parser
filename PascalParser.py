@@ -7,6 +7,7 @@ import OpType
 import TokenCode
 import SourceLine
 import Token
+import SymbolTable
 
 class PascalParser:
     def __init__(self, filename):
@@ -16,6 +17,7 @@ class PascalParser:
         f = open(filename, "r")
         self.scanner = Scanner(lexicon, f, filename)
         self.sourceLine = SourceLine.SourceLine()
+        self.symbol_table = SymbolTable.SymbolTable()
         self.token = Token
         self.nextToken()
     def nextToken(self):
@@ -26,13 +28,17 @@ class PascalParser:
             self.token = token
             if self.token.token_code == TokenCode.tc_NEWLINE:
                 self.nextToken()
-            if self.token.token_code == TokenCode.tc_COMMENT:
+            elif self.token.token_code == TokenCode.tc_COMMENT:
                 self.nextToken()
-            if self.token.token_code == TokenCode.tc_ERROR:
+            elif self.token.token_code == TokenCode.tc_ERROR:
                 self.sourceLine.addError('^ Illegal character', token.col)
                 self.nextToken()
+            elif self.token.token_code == TokenCode.tc_ID or self.token.token_code == TokenCode.tc_NUMBER:
+                token.symbol_table_entry = self.symbol_table.insert(token.str)
         else:
             self.sourceLine.printing()
+            print
+            print self.symbol_table.__str__()
     def match(self, token_code):
         if self.token.token_code == token_code:
             self.nextToken()

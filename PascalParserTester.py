@@ -56,5 +56,5 @@ def testProgramError():
 #testSign()
 #testType()
 #testParser1()
-#testProgramCorrect()
-testProgramError()
+testProgramCorrect()
+#testProgramError()

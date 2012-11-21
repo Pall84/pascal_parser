@@ -1,0 +1,71 @@
+   1:  Program test(input output;
+                          ^ Expected ')'
+   2:  {A program with parsing errors}
+   3:  Var x : integer
+   4:  Var y : real;
+       ^ Expected ';'
+   5:  
+   6:  function ftest(x:integer) : real;
+   7:  var t : array[1..10 of real;
+                           ^ Expected ']'
+   8:  var i  integer;
+              ^ Expected ':'
+   9:  begin
+  10:          i := 0;
+  11:          t[1] := -2.0*y;
+  12:          while (i < 4 do
+                            ^ Expected ')'
+  13:            i := i + 1;
+  14:          ftest := t[1;
+                           ^ Expected ']'
+  15:  end;
+       ^ Expected a statement
+  16:  
+  17:  begin
+  18:      y := 2.0*(3.14!$);
+                         ^ Illegal character
+                          ^ Illegal character
+  19:      if y>2.0
+  20:          begin
+               ^ Expected THEN
+  21:                  y := 123.45E-3;
+  22:                  x := x + 1
+  23:          end
+  24:          else
+  25:          begin
+  26:                  y := ftest(x);
+  27:                  y := y+2.0
+  28:          end; 
+  29:  
+  30:          while (x<4) 
+  31:          begin
+               ^ Expected DO
+  32:             y := ftest (x;
+                               ^ Expected ')'
+  33:             x := x + 
+  34:          end
+               ^ Expected an identifier
+  35:  .
+       ^ Expected keyword END
+  36:       
+  37:  
+  38:  
+
+Number of errors: 14
+
+ Entry         Lexeme
+     1           test
+     2          input
+     3         output
+     4              x
+     5              y
+     6          ftest
+     7              t
+     8              1
+     9             10
+    10              i
+    11              0
+    12            2.0
+    13              4
+    14           3.14
+    15      123.45e-3
