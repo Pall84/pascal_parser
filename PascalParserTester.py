@@ -3,8 +3,14 @@ __author__ = 'Palli'
 
 import PascalParser
 
+def testLexical():
+    filename = "test_files/pascal_lex1"
+    parser = PascalParser.PascalParser(filename)
+    sign = parser.program()
+    if not sign[0]:
+        print "sign error"
+        print sign[1]
 
-#test sign
 def testSign():
     filename = "test_files/sign"
     parser = PascalParser.PascalParser(filename)
@@ -17,6 +23,14 @@ def testType():
     filename = "test_files/type"
     parser = PascalParser.PascalParser(filename)
     sign = parser.type()
+    if not sign[0]:
+        print "sign error"
+        print sign[1]
+
+def testParser1():
+    filename = "test_files/parser1"
+    parser = PascalParser.PascalParser(filename)
+    sign = parser.program()
     if not sign[0]:
         print "sign error"
         print sign[1]
@@ -38,7 +52,9 @@ def testProgramError():
         print sign[1]
 
 
+#testLexical()
 #testSign()
 #testType()
+#testParser1()
 #testProgramCorrect()
 testProgramError()

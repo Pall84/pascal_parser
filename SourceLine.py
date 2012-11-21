@@ -29,6 +29,8 @@ class SourceLine:
 
     def printing(self):
         print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+        for error in self.errors:
+            print error
 
     def addError(self, error):
         error.rjust()

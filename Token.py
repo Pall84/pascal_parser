@@ -12,3 +12,4 @@ class Token:
         self.line = line
         self.col = col
         self.str = str
+        self.symbol_table_entry = None
