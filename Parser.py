@@ -2,49 +2,74 @@
 __author__ = 'palleymundsson'
 
 from plex import *
-import PascalLexer
-import OpType
-import TokenCode
-import SourceLine
-import Token
-import SymbolTable
+from Lexical import *
 from CodeGenerator import *
 
+class SourceLine:
+    def __init__(self):
+        self.line = ""
+        self.lineNr = 1
+        self.errors = []
+        self.number_of_errors = 0
+    def addToken(self, token ):
+        word = token.lexeme
+        if token.line > self.lineNr:
+            print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+            for error in self.errors:
+                print error
+            self.lineNr = token.line
+            for i in range(token.col):
+                word = " " + word
+            self.line = word
+            self.errors = []
+        else:
+            #print '%s : %s' %(len(self.line), token.col)
+            for i in range(token.col- len(self.line)):
+                word = " " + word
+
+            self.line += word
+    def printing(self):
+        print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+        for error in self.errors:
+            print error
+
+        print
+        if self.number_of_errors <= 0:
+            print "No errors"
+        else:
+            print 'Number of errors: %i' %self.number_of_errors
+    def addError(self, error, spaces):
+        self.number_of_errors += 1
+        for i in range(spaces+5):
+            error = " " + error
+        self.errors.append(error)
 
 class PascalParser:
     def __init__(self, filename):
-        lexicon = PascalLexer.getLexer()
-
-        #filename = "test_files/pascal_lex1"
-        f = open(filename, "r")
-        self.scanner = Scanner(lexicon, f, filename)
-        self.sourceLine = SourceLine.SourceLine()
-        self.symbol_table = SymbolTable.SymbolTable()
+        self.scanner = PascalScanner(filename)
+        self.sourceLine = SourceLine()
         self.token = Token
-        self.nextToken()
+        self.next_token()
         self.code = Code()
-    def nextToken(self):
-        temp = self.scanner.read()
-        if temp[0]:
-            token = Token.Token(temp[0][0], temp[0][1], temp[0][2], self.scanner.start_line, self.scanner.start_col, temp[1])
-            self.sourceLine.addToken(token)
-            self.token = token
+    def next_token(self):
+        self.token = self.scanner.next_token()
+
+        if self.token.token_code != TokenCode.tc_EOF:
+            self.sourceLine.addToken(self.token)
             if self.token.token_code == TokenCode.tc_NEWLINE:
-                self.nextToken()
+                self.next_token()
             elif self.token.token_code == TokenCode.tc_COMMENT:
-                self.nextToken()
+                self.next_token()
             elif self.token.token_code == TokenCode.tc_ERROR:
-                self.sourceLine.addError('^ Illegal character', token.col)
-                self.nextToken()
-            elif self.token.token_code == TokenCode.tc_ID or self.token.token_code == TokenCode.tc_NUMBER:
-                token.symbol_table_entry = self.symbol_table.insert(token.str)
+                self.sourceLine.addError('^ Illegal character', self.token.col)
+                self.next_token()
         else:
             self.sourceLine.printing()
             print
-            print self.symbol_table.__str__()
+            print self.scanner.symbol_table.__str__()
     def match(self, token_code):
         if self.token.token_code == token_code:
-            self.nextToken()
+            self.next_token()
             return True
         else:
             return False
@@ -57,7 +82,7 @@ class PascalParser:
                 run = False
                 break
         while run:
-            self.nextToken()
+            self.next_token()
             for token in sync_and_stop_tokens:
                 if self.token.token_code == token:
                     run = False
@@ -306,7 +331,7 @@ class PascalParser:
 
         # error
         else:
-            return False, '^ Expected a standard_type'
+            return False, '^ Expected "standard_type"'
     def subprogram_declarations(self):
         """ implements the CFG
 
@@ -398,7 +423,7 @@ class PascalParser:
         if self.match(TokenCode.tc_PROCEDURE):
             # procedure id
             if not self.match(TokenCode.tc_ID):
-                return False, '^ Expected a id'
+                return False, '^ Expected "id"'
 
             # procedure id arguments
             arguments = self.arguments()
@@ -408,12 +433,12 @@ class PascalParser:
 
             # procedure id arguments ;
             if not self.match(TokenCode.tc_SEMICOL):
-                return False, '^ Expected a ;'
+                return False, '^ Expected ";"'
 
             return True, 'good'
 
         # error
-        return False, 'expecting "subprogram_head'
+        return False, 'Expected "subprogram_head'
     def arguments(self):
         """ implements the CFG
 
@@ -487,7 +512,7 @@ class PascalParser:
 
             # ; identifier_list :
             if not self.match(TokenCode.tc_COLON):
-                return False, '^ Expected a :'
+                return False, '^ Expected ":"'
 
             # ; identifier_list : type
             type = self.type()
@@ -660,7 +685,7 @@ class PascalParser:
             return True, 'good'
         # error
         else:
-            return False, '^ Expected a statement'
+            return False, '^ Expected "statement"'
     def statement_marked(self):
         """ implements the CFG
 
@@ -864,7 +889,7 @@ class PascalParser:
 
         # error
         else:
-            return False, '^ Expected a simple_expression'
+            return False, '^ Expected "simple_expression"'
     def simple_expression_marked(self):
         """ implements the CFG
 
@@ -998,7 +1023,7 @@ class PascalParser:
 
             # ( expression )
             if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ Expected a )'
+                return False, '^ Expected ")"'
 
             return True, 'good'
 
@@ -1040,7 +1065,7 @@ class PascalParser:
 
             # ( expression_list )
             if not self.match(TokenCode.tc_RPAREN):
-                return False,'^ Expecting ")"'
+                return False,'^ Expected ")"'
 
             return True, "good"
 
@@ -1057,7 +1082,7 @@ class PascalParser:
 
             # [ expression ]
             if not self.match(TokenCode.tc_RBRACK):
-                return False, '^ Expected a ]'
+                return False, '^ Expected "]"'
 
             return True, "good"
 
@@ -1073,13 +1098,60 @@ class PascalParser:
         @return true if input is according to grammar false otherwise.
         """
         if self.token.op_type == OpType.op_PLUS:
-            self.nextToken()
+            self.next_token()
             return True, "good"
 
         elif self.token.op_type == OpType.op_MINUS:
-            self.nextToken()
+            self.next_token()
             return True, "good"
 
         # does not fit syntax
         else:
-            return False, '^ Expected a sign'
+            return False, '^ Expected "sign"'
+
+class PascalParserTester:
+    def testLexical(self):
+        filename = "test_files/pascal_lex1"
+        parser = PascalParser.PascalParser(filename)
+        sign = parser.program()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+    def testSign(self):
+        filename = "test_files/sign"
+        parser = PascalParser.PascalParser(filename)
+        sign = parser.sign()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+    def testType(self):
+        filename = "test_files/type"
+        parser = PascalParser.PascalParser(filename)
+        sign = parser.type()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+    def testParser1(self):
+        filename = "test_files/parser1"
+        parser = PascalParser(filename)
+        sign = parser.program()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+    def testProgramCorrect(self):
+        filename = "test_files/pas_syntax_ok"
+        parser = PascalParser(filename)
+        sign = parser.program()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+    def testProgramError(self):
+        filename = "test_files/pas_syntax_err"
+        parser = PascalParser(filename)
+        sign = parser.program()
+        if not sign[0]:
+            print "sign error"
+            print sign[1]
+
+tester = PascalParserTester()
+tester.testParser1()

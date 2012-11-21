@@ -2,5 +2,5 @@ program test(input, output);
 var i,j : rubbish;
 begin
     i := 2;
-    $ := 3.
+    $ := 3;
 end.
