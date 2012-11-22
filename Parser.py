@@ -1,53 +1,12 @@
 # -*- coding: utf-8 -*-
 __author__ = 'palleymundsson'
 
-from plex import *
 from Lexical import *
 from CodeGenerator import *
-
-class SourceLine:
-    def __init__(self):
-        self.line = ""
-        self.lineNr = 1
-        self.errors = []
-        self.number_of_errors = 0
-    def addToken(self, token ):
-        word = token.lexeme
-        if token.line > self.lineNr:
-            print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
-            for error in self.errors:
-                print error
-            self.lineNr = token.line
-            for i in range(token.col):
-                word = " " + word
-            self.line = word
-            self.errors = []
-        else:
-            #print '%s : %s' %(len(self.line), token.col)
-            for i in range(token.col- len(self.line)):
-                word = " " + word
-
-            self.line += word
-    def printing(self):
-        print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
-        for error in self.errors:
-            print error
-
-        print
-        if self.number_of_errors <= 0:
-            print "No errors"
-        else:
-            print 'Number of errors: %i' %self.number_of_errors
-    def addError(self, error, spaces):
-        self.number_of_errors += 1
-        for i in range(spaces+5):
-            error = " " + error
-        self.errors.append(error)
 
 class PascalParser:
     def __init__(self, filename):
         self.scanner = PascalScanner(filename)
-        self.sourceLine = SourceLine()
         self.token = Token
         self.next_token()
         self.error = None
@@ -58,20 +17,6 @@ class PascalParser:
         return self.token.op_type
     def next_token(self):
         self.token = self.scanner.next_token()
-
-        if self.token.token_code != TokenCode.tc_EOF:
-            self.sourceLine.addToken(self.token)
-            if self.token.token_code == TokenCode.tc_NEWLINE:
-                self.next_token()
-            elif self.token.token_code == TokenCode.tc_COMMENT:
-                self.next_token()
-            elif self.token.token_code == TokenCode.tc_ERROR:
-                self.sourceLine.addError('^ Illegal character', self.token.col)
-                self.next_token()
-        else:
-            self.sourceLine.printing()
-            print
-            print self.scanner.symbol_table.__str__()
     def match(self, token_code):
         """ check if current token matches expected token.
 
@@ -86,7 +31,7 @@ class PascalParser:
 
         # we do not have a match
         else:
-            self.error = 'Expected "%s"' % token_code
+            self.error = '^ Expected "%s"' % token_code
 
     def recover(self, non_terminal=None ):
         """ recovers from error
@@ -159,20 +104,95 @@ class PascalParser:
              non_terminal == NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW:
             stop_tokens = (TokenCode.tc_RPAREN, TokenCode.tc_COLON)
 
+        elif non_terminal == NoneTerminal.nt_PROGRAM_FOLLOW:
+            stop_tokens = (TokenCode.tc_EOF,)
+
         # set of first tokens
         elif non_terminal == NoneTerminal.nt_SIGN_FIRST:
             stop_tokens = (TokenCode.tc_ADDOP,)
 
         elif non_terminal == NoneTerminal.nt_FACTOR_MARKED_FIRST:
-            stop_tokens = (TokenCode.tc_LPAREN, TokenCode.tc_LBRACK)
+            stop_tokens = (TokenCode.tc_LPAREN, TokenCode.tc_LBRACK, TokenCode.tc_ID,
+                           TokenCode.tc_NUMBER, TokenCode.tc_NOT, TokenCode.tc_ADDOP,
+                           TokenCode.tc_RPAREN, TokenCode.tc_RBRACK, TokenCode.tc_DO,
+                           TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
+                           TokenCode.tc_SEMICOL, TokenCode.tc_END)
 
-        elif non_terminal == NoneTerminal.nt_FACTOR_FIRST:
+        elif non_terminal == NoneTerminal.nt_FACTOR_FIRST or\
+             non_terminal == NoneTerminal.nt_TERM_FIRST:
             stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN, TokenCode.tc_NOT)
 
+        elif non_terminal == NoneTerminal.nt_TERM_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_MULOP, TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
+                           TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
+                           TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
+                           TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
+                           TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_SIMPLE_EXPRESSION_FIRST or\
+             non_terminal == NoneTerminal.nt_EXPRESSION_FIRST or\
+             non_terminal == NoneTerminal.nt_EXPRESSION_LIST_FIRST:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN,
+                           TokenCode.tc_NOT, TokenCode.tc_ADDOP)
+
+        elif non_terminal == NoneTerminal.nt_EXPRESSION_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_RELOP, TokenCode.tc_RPAREN,
+                           TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
+                           TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_EXPRESSION_LIST_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_COMMA, TokenCode.tc_RPAREN)
+
+        elif non_terminal == NoneTerminal.nt_STATEMENT_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_LBRACK, TokenCode.tc_ASSIGNOP, TokenCode.tc_LPAREN,
+                           TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_STATEMENT_FIRST or\
+             non_terminal == NoneTerminal.nt_STATEMENT_LIST_FIRST:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_IF, TokenCode.tc_WHILE, TokenCode.tc_BEGIN)
+
+        elif non_terminal == NoneTerminal.nt_STATEMENT_LIST_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_OPTIONAL_STATEMENT_FIRST:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_IF, TokenCode.tc_WHILE,
+                           TokenCode.tc_BEGIN, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_COMPOUND_STATEMENT_FIRST:
+            stop_tokens = (TokenCode.tc_BEGIN,)
+
+        elif non_terminal == NoneTerminal.nt_PARAMETER_LIST_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_SEMICOL,)
+
+        elif non_terminal == NoneTerminal.nt_PARAMETER_LIST_FIRST or\
+             non_terminal == NoneTerminal.nt_IDENTIFIER_LIST_FIRST:
+            stop_tokens = (TokenCode.tc_ID,)
+
+        elif non_terminal == NoneTerminal.nt_ARGUMENTS_FIRST:
+            stop_tokens = (TokenCode.tc_LPAREN, TokenCode.tc_COLON, TokenCode.tc_SEMICOL)
+
+        elif non_terminal == NoneTerminal.nt_SUBPROGRAM_HEAD_FIRST or\
+             non_terminal == NoneTerminal.nt_SUBPROGRAM_DECLARATION_FIRST or\
+             non_terminal == NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FIRST:
+            stop_tokens = (TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE)
+
+        elif non_terminal == NoneTerminal.nt_STANDARD_TYPE_FIRST:
+            stop_tokens = (TokenCode.tc_INTEGER, TokenCode.tc_REAL)
+
+        elif non_terminal == NoneTerminal.nt_TYPE_FIRST:
+            stop_tokens = (TokenCode.tc_INTEGER, TokenCode.tc_REAL, TokenCode.tc_ARRAY)
+
+        elif non_terminal == NoneTerminal.nt_DECLARATIONS_FIRST:
+            stop_tokens = (TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN)
+
+        elif non_terminal == NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_COMMA, TokenCode.tc_RPAREN, TokenCode.tc_COLON)
 
 
-
-        self.sourceLine.addError(self.error)
+        self.scanner.add_error(self.error, self.token.col)
         self.error = None
 
         sync_and_stop_tokens = sync_tokens + stop_tokens
@@ -207,83 +227,77 @@ class PascalParser:
                                   subprogram_declarations
                                   compound_statement
                                   .
-
-        return true if input is according to grammar, false otherwise
         """
-        hasError = False
-
         #program
-        if not self.match(TokenCode.tc_PROGRAM):
-            self.sourceLine.addError('^ Expected "program"', self.token.col)
-            hasError = True
+        self.match(TokenCode.tc_PROGRAM)
 
-        # program id
-        if not self.match(TokenCode.tc_ID) and not hasError:
-            self.sourceLine.addError('^ Expected "id"', self.token.col)
-            hasError = True
+        if not self.error:
+            # program id
+            self.match(TokenCode.tc_ID)
 
-        # program id (
-        if not self.match(TokenCode.tc_LPAREN) and not hasError:
-            self.sourceLine.addError('^ Expected "("', self.token.col)
-            hasError = True
+        if not self.error:
+            # program id (
+            self.match(TokenCode.tc_LPAREN)
 
-        if hasError:
-            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ID, TokenCode.tc_ID))
-            hasError = False
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_IDENTIFIER_LIST_FIRST)
 
         # program id ( identifier_list
-        identifier_list = self.identifier_list()
-        if not identifier_list[0]:
-            self.sourceLine.addError(identifier_list[1], self.token.col)
-            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_COLON))
+        self.identifier_list()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW)
 
         # program id ( identifier_list )
-        if not self.match(TokenCode.tc_RPAREN):
-            self.sourceLine.addError('^ Expected ")"', self.token.col)
-            hasError = True
+        self.match(TokenCode.tc_RPAREN)
 
-        # program id ( identifier_list ) ;
-        if not self.match(TokenCode.tc_SEMICOL) and not hasError:
-            self.sourceLine.addError('^ Expected ";"', self.token.col)
+        if not self.error:
+            # program id ( identifier_list ) ;
+            self.match(TokenCode.tc_SEMICOL)
 
-        if hasError:
-            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_VAR, TokenCode.tc_FUNCTION,
-                                                TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN))
-            hasError = False
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_DECLARATIONS_FIRST)
 
         # program id ( identifier_list ) ;
         # declarations
-        declarations = self.declarations()
-        if not declarations[0]:
-            self.sourceLine.addError(declarations[1], self.token.col)
-            self.eat_up_to_stop_or_sync_tokens(( TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN))
+        self.declarations()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_DECLARATIONS_FOLLOW)
 
         # program id ( identifier_list ) ;
         # declarations
         # subprogram_declarations
-        subprogram_declarations = self.subprogram_declarations()
-        if not subprogram_declarations[0]:
-            self.sourceLine.addError(subprogram_declarations[1], self.token.col)
-            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_BEGIN, TokenCode.tc_BEGIN))
+        self.subprogram_declarations()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FOLLOW)
 
         # program id ( identifier_list ) ;
         # declarations
         # subprogram_declarations
         # compound_statement
-        compound_statement = self.compound_statement()
-        if not compound_statement[0]:
-            self.sourceLine.addError(compound_statement[1], self.token.col)
-            self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END, TokenCode.tc_DOT))
+        self.compound_statement()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_COMPOUND_STATEMENT_FOLLOW)
 
         # program id ( identifier_list ) ;
         # declarations
         # subprogram_declarations
         # compound_statement
         # .
-        if not self.match(TokenCode.tc_DOT):
-            self.sourceLine.addError('^ Expected "."', self.token.col)
+        self.match(TokenCode.tc_DOT)
 
-        return True, 'good'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_PROGRAM_FOLLOW)
     def identifier_list(self):
         """implements the CFG.
 
@@ -292,509 +306,567 @@ class PascalParser:
         return true if input is according to grammar, false otherwise
         """
         # id
-        if self.match(TokenCode.tc_ID):
-            # id identifier_list_marked
-            identifier_list_marked = self.identifier_list_marked()
-            if not identifier_list_marked[0]:
-                self.sourceLine.addError(identifier_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON, TokenCode.tc_RPAREN))
-            return True, 'good'
+        self.match(TokenCode.tc_ID)
 
-        # error
-        else:
-            return False, '^ Expected "id"'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FIRST)
+
+        # id identifier_list_marked
+        self.identifier_list_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FOLLOW)
     def identifier_list_marked(self):
         """ implements the CFG
 
             identifier_list_marked  ::=     , id identifier_list_marked
                                    |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # ,
-        if self.match(TokenCode.tc_COMMA):
+        if current_token_code == TokenCode.tc_COMMA:
+            self.match(TokenCode.tc_COMMA)
+
             # , id
-            if not self.match(TokenCode.tc_ID):
-                return False, '^ Expected "id"'
+            self.match(TokenCode.tc_ID)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FIRST)
 
             #, id identifier_list_marked
-            identifier_list_marked = self.identifier_list_marked()
-            if not identifier_list_marked[0]:
-                self.sourceLine.addError(identifier_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON, TokenCode.tc_RPAREN))
-            return True, 'good'
+            self.identifier_list_marked()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FOLLOW)
 
         # ϵ
         else:
-            return True, 'good'
+            pass
     def declarations(self):
         """ implements the CFG
 
             declarations    ::=     var identifier_list : type ; declarations
                             |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # var
-        if self.match(TokenCode.tc_VAR):
+        if current_token_code == TokenCode.tc_VAR:
+            self.match(TokenCode.tc_VAR)
+
             # var identifier_list
-            identifier_list = self.identifier_list()
-            if not identifier_list[0]:
-                self.sourceLine.addError(identifier_list[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON,TokenCode.tc_RPAREN))
+            self.identifier_list()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW)
 
             # var identifier_list :
-            if not self.match(TokenCode.tc_COLON):
-                self.sourceLine.addError('^ Expected ":"', self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_INTEGER, TokenCode.tc_REAL,
-                                                    TokenCode.tc_ARRAY))
+            self.match(TokenCode.tc_COLON)
 
-
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TYPE_FIRST)
 
             # var identifier_list : type
-            type = self.type()
-            if not type[0]:
-                self.sourceLine.addError(type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
+            self.type()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TYPE_FOLLOW)
 
             # var identifier_list : type ;
-            if not self.match(TokenCode.tc_SEMICOL):
-                self.sourceLine.addError('^ Expected ";"', self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_VAR, TokenCode.tc_PROCEDURE,
-                                                    TokenCode.tc_FUNCTION, TokenCode.tc_BEGIN))
+            self.match(TokenCode.tc_SEMICOL)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_DECLARATIONS_FIRST)
 
             # var identifier_list : type ; declarations
-            declarations = self.declarations()
-            if not declarations[0]:
-                self.sourceLine.addError(declarations[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN))
-            return True, 'good'
+            self.declarations()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_DECLARATIONS_FOLLOW)
 
         # ϵ
         else:
-            return True, 'good'
+            pass
     def type(self):
         """ implements the CFG
 
            type   ::=     standard_type
                   |        array [ num .. num ] of standard_type
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # standard_type
-        if self.standard_type()[0]:
-            return True, "good"
+        if current_token_code == TokenCode.tc_INTEGER or current_token_code == TokenCode.tc_REAL:
+            self.standard_type()
 
         # array
-        elif self.match(TokenCode.tc_ARRAY):
+        elif current_token_code == TokenCode.tc_ARRAY:
+            self.match(TokenCode.tc_ARRAY)
 
             # array [
-            if not self.match(TokenCode.tc_LBRACK):
-                return False, '^ Expected "["'
+            self.match(TokenCode.tc_LBRACK)
 
-            # array [ num
-            if not self.match(TokenCode.tc_NUMBER):
-                return False, '^ Expected "number"'
+            if not self.error:
+                # array [ num
+                self.match(TokenCode.tc_NUMBER)
 
-            # array [ num ..
-            if not self.match(TokenCode.tc_DOTDOT):
-                return False, '^ Expected ".."'
+            if not self.error:
+                # array [ num ..
+                self.match(TokenCode.tc_DOTDOT)
 
-            # array [ num .. num
-            if not self.match(TokenCode.tc_NUMBER):
-                return False, '^ Expected "number"'
+            if not self.error:
+                # array [ num .. num
+                self.match(TokenCode.tc_NUMBER)
 
-            # array [ num .. num ]
-            if not self.match(TokenCode.tc_RBRACK):
-                return False, '^ Expected "]"'
+            if not self.error:
+                # array [ num .. num ]
+                self.match(TokenCode.tc_RBRACK)
 
-            # array [ num .. num ] of
-            if not self.match(TokenCode.tc_OF):
-                return False, '^ Expected "of"'
+            if not self.error:
+                # array [ num .. num ] of
+                self.match(TokenCode.tc_OF)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STANDARD_TYPE_FIRST)
 
             # array [ num .. num ] of standard_type
-            standard_type = self.standard_type()
-            if not standard_type[0]:
-                self.sourceLine.addError(standard_type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
-            return True, 'good'
+            self.standard_type()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STANDARD_TYPE_FOLLOW)
 
         # error
         else:
-            return False, '^ Expected "type"'
+            self.match(TokenCode.tc_TYPE)
     def standard_type(self):
         """ implements the CFG
 
            standard_type   ::=     integer
                            |       real
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # integer
-        if self.match(TokenCode.tc_INTEGER):
-            return True, "good"
+        if current_token_code == TokenCode.tc_INTEGER:
+            self.match(TokenCode.tc_INTEGER)
 
         # real
-        elif self.match(TokenCode.tc_REAL):
-            return True, "good"
+        elif current_token_code == TokenCode.tc_REAL:
+            self.match(TokenCode.tc_REAL)
 
         # error
         else:
-            return False, '^ Expected "standard_type"'
+            self.match(TokenCode.tc_STANDARD_TYPE)
     def subprogram_declarations(self):
         """ implements the CFG
 
            subprogram_declarations     ::=     subprogram_declaration ; subprogram_declarations
                                        |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # subprogram_declaration
-        subprogram_declaration = self.subprogram_declaration()
-        if subprogram_declaration[0]:
+        if current_token_code == TokenCode.tc_FUNCTION or current_token_code == TokenCode.tc_PROCEDURE:
+            self.subprogram_declaration()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SUBPROGRAM_DECLARATION_FOLLOW)
+
             # subprogram_declaration ;
-            if not self.match(TokenCode.tc_SEMICOL):
-                return False, '^ Expected ";"'
+            self.match(TokenCode.tc_SEMICOL)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FIRST)
 
             # subprogram_declaration ; subprogram_declarations
-            subprogram_declarations = self.subprogram_declarations()
-            if not subprogram_declarations[0]:
-                self.sourceLine.addError(subprogram_declarations[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_BEGIN, TokenCode.tc_BEGIN))
-            return True, 'good'
+            self.subprogram_declarations()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FOLLOW)
 
         # ϵ
         else:
-            return True, 'good'
+            pass
     def subprogram_declaration(self):
         """ implements the CFG
 
            subprogram_declaration      ::=     subprogram_head declarations compound_statement
-
-        return true if input is according to grammar, false otherwise
         """
         # subprogram_head
-        subprogram_head = self.subprogram_head()
-        if subprogram_head[0]:
-            # subprogram_head declarations
-            declarations = self.declarations()
-            if not declarations[0]:
-                self.sourceLine.addError(declarations[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN))
+        self.subprogram_head()
 
-            # subprogram_head declarations compound_statement
-            compound_statement = self.compound_statement()
-            if not compound_statement[0]:
-                self.sourceLine.addError(compound_statement[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
-            return True, 'good'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_SUBPROGRAM_HEAD_FOLLOW)
 
-        # error
-        else:
-            return subprogram_head
+        # subprogram_head declarations
+        self.declarations()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_DECLARATIONS_FOLLOW)
+
+        # subprogram_head declarations compound_statement
+        self.compound_statement()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_COMPOUND_STATEMENT_FOLLOW)
     def subprogram_head(self):
         """ implements the CFG
 
            subprogram_head     ::=     function id arguments : standard_type
                                |       procedure id arguments ;
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # function
-        if self.match(TokenCode.tc_FUNCTION):
+        if current_token_code == TokenCode.tc_FUNCTION:
+            self.match(TokenCode.tc_FUNCTION)
+
             # function id
-            if not self.match(TokenCode.tc_ID):
-                return False, '^ Expected "id"'
+            self.match(TokenCode.tc_ID)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_ARGUMENTS_FIRST)
 
             # function id arguments
-            arguments = self.arguments()
-            if not arguments[0]:
-                self.sourceLine.addError(arguments[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON, TokenCode.tc_SEMICOL))
+            self.arguments()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_ARGUMENTS_FOLLOW)
 
             # function id arguments :
-            if not self.match(TokenCode.tc_COLON):
-                return False, '^ Expected ":"'
+            self.match(TokenCode.tc_COLON)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STANDARD_TYPE_FIRST)
 
             # function id arguments : standard_type
-            standard_type = self.standard_type()
-            if not standard_type[0]:
-                self.sourceLine.addError(standard_type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
+            self.standard_type()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STANDARD_TYPE_FOLLOW)
 
             # function id arguments : standard_type ;
-            if not self.match(TokenCode.tc_SEMICOL):
-                return False, '^ Expected ";"'
-
-            return True, 'good'
+            self.match(TokenCode.tc_SEMICOL)
 
         # procedure
-        if self.match(TokenCode.tc_PROCEDURE):
+        elif current_token_code == TokenCode.tc_PROCEDURE:
+            self.match(TokenCode.tc_PROCEDURE)
+
             # procedure id
-            if not self.match(TokenCode.tc_ID):
-                return False, '^ Expected "id"'
+            self.match(TokenCode.tc_ID)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_ARGUMENTS_FIRST)
 
             # procedure id arguments
-            arguments = self.arguments()
-            if not arguments[0]:
-                self.sourceLine.addError(arguments[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_COLON, TokenCode.tc_SEMICOL))
+            self.arguments()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_ARGUMENTS_FOLLOW)
 
             # procedure id arguments ;
-            if not self.match(TokenCode.tc_SEMICOL):
-                return False, '^ Expected ";"'
-
-            return True, 'good'
+            self.match(TokenCode.tc_SEMICOL)
 
         # error
-        return False, 'Expected "subprogram_head'
+        else:
+            self.match(TokenCode.tc_SUBPROGRAM_HEAD)
     def arguments(self):
         """ implements the CFG
 
            arguments   ::=     ( parameter_list )
                         |      ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # (
-        if self.match(TokenCode.tc_LPAREN):
+        if current_token_code == TokenCode.tc_LPAREN:
+            self.match(TokenCode.tc_LPAREN)
+
             # ( parameter_list
-            parameter_list = self.parameter_list()
-            if not parameter_list[0]:
-                self.sourceLine.addError(parameter_list[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
+            self.parameter_list()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_PARAMETER_LIST_FOLLOW)
 
             # ( parameter_list )
-            if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ Expected ")"'
-
-            return True, 'good'
+            self.match(TokenCode.tc_RPAREN)
 
         # ϵ
         else:
-            return True, 'good'
+            pass
     def parameter_list(self):
-        """ inplements the CFG
+        """ implements the CFG
 
            parameter_list      ::=     identifier_list : type parameter_list_marked
-
-        return true if input is according to grammar, false otherwise
         """
         # identifier_list
-        identifier_list = self.identifier_list()
-        if identifier_list[0]:
-            # identifier_list :
-            if not self.match(TokenCode.tc_COLON):
-                return False, '^ Expected ":"'
+        self.identifier_list()
 
-            # identifier_list : type
-            type = self.type()
-            if not type[0]:
-                self.sourceLine.addError(type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW)
 
-            # identifier_list : type parameter_list_marked
-            parameter_list_marked = self.parameter_list_marked()
-            if not parameter_list_marked[0]:
-                self.sourceLine.addError(parameter_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
-            return True, 'good'
+        # identifier_list :
+        self.match(TokenCode.tc_COLON)
 
-        # error
-        else:
-            return identifier_list
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_TYPE_FIRST)
+
+        # identifier_list : type
+        self.type()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_TYPE_FOLLOW)
+
+        # identifier_list : type parameter_list_marked
+        self.parameter_list_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_PARAMETER_LIST_FOLLOW)
     def parameter_list_marked(self):
         """ implements the CFG
 
            parameter_list_marked   ::=     ; identifier_list : type parameter_list_marked
                                    |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # ;
-        if self.match(TokenCode.tc_SEMICOL):
+        if current_token_code == TokenCode.tc_SEMICOL:
+            self.match(TokenCode.tc_SEMICOL)
+
             # ; identifier_list
-            identifier_list = self.identifier_list()
-            if not identifier_list[0]:
-                self.sourceLine.addError(identifier_list[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_COLON))
+            self.identifier_list()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW)
 
             # ; identifier_list :
-            if not self.match(TokenCode.tc_COLON):
-                return False, '^ Expected ":"'
+            self.match(TokenCode.tc_COLON)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TYPE_FIRST)
 
             # ; identifier_list : type
-            type = self.type()
-            if not type[0]:
-                self.sourceLine.addError(type[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_SEMICOL, TokenCode.tc_SEMICOL))
+            self.type()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TYPE_FOLLOW)
 
             # ; identifier_list : type parameter_list_marked
-            parameter_list_marked = self.parameter_list_marked()
-            if not parameter_list_marked[0]:
-                self.sourceLine.addError(parameter_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
-            return True, 'good'
+            self.parameter_list_marked()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_PARAMETER_LIST_FOLLOW)
 
         # ϵ
-        return True, 'good'
+        pass
     def compound_statement(self):
         """ implements the CFG
 
            compound_statement  ::=     begin optional_statement end
-
-
-        return true if input is according to grammar, false otherwise
         """
         # begin
-        if self.match(TokenCode.tc_BEGIN):
-            # begin optional_statement
-            self.optional_statement()
+        self.match(TokenCode.tc_BEGIN)
 
-            # begin optional_statement end
-            if not self.match(TokenCode.tc_END):
-                return False, '^ Expected "end"'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_OPTIONAL_STATEMENT_FIRST)
 
-            return True, 'good'
+        # begin optional_statement
+        self.optional_statement()
 
-        # error
-        return False, '^ Expected "begin"'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_OPTIONAL_STATEMENT_FOLLOW)
+
+        # begin optional_statement end
+        self.match(TokenCode.tc_END)
     def optional_statement(self):
-        """ inplements the CFG
+        """ implements the CFG
 
            optional_statement   ::=     statement_list
                                |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
         self.statement_list()
-        return True, 'good'
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_STATEMENT_LIST_FOLLOW)
     def statement_list(self):
         """ implements the CFG
 
-           statment_list   ::=     statement statement_list_marked
-
-
-        return true if input is according to grammar, false otherwise
+           statement_list   ::=     statement statement_list_marked
         """
         # statement
-        statement = self.statement()
-        if statement[0]:
-            # statement statement_list_marked
-            statement_list_marked = self.statement_list_marked()
-            if not statement_list_marked[0]:
-                self.sourceLine.addError(statement_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_END, TokenCode.tc_END))
+        self.statement()
 
-            return True, 'good'
-        # error
-        else:
-            return statement
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_STATEMENT_FOLLOW)
+
+
+        self.statement_list_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_STATEMENT_LIST_MARKED_FOLLOW)
     def statement_list_marked(self):
         """ implements the CFG
 
            statement_list_marked   ::=     ; statement statement_list_marked
                                    |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # ;
-        if self.match(TokenCode.tc_SEMICOL):
+        if current_token_code == TokenCode.tc_SEMICOL:
+            self.match(TokenCode.tc_SEMICOL)
+
             # ; statement
-            statement = self.statement()
-            if not statement[0]:
-                self.sourceLine.addError(statement[1], self.token.line)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.statement()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FOLLOW)
 
             # ; statement statement_list_marked
-            statement_list_marked = self.statement_list_marked()
-            if not statement_list_marked[0]:
-                self.sourceLine.addError(statement_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_END, TokenCode.tc_END))
+            self.statement_list_marked()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_LIST_MARKED_FOLLOW)
         # ϵ
         else:
-            return True, 'good'
+            pass
     def statement(self):
         """ inplements the CFG
 
-           statement   ::=     id statment_marked
+           statement   ::=     id statement_marked
                        |       compound_statement
                        |       if expression then statement else statement
                        |       while expression do statement
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # id
-        if self.match(TokenCode.tc_ID):
+        if current_token_code == TokenCode.tc_ID:
+            self.match(TokenCode.tc_ID)
+
             # id statement_marked
-            statement_marked = self.statement_marked()
-            if not statement_marked[0]:
-                self.sourceLine.addError(statement_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
-            return True, 'good'
+            self.statement_marked()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_MARKED_FOLLOW)
 
         # compound_statement
-        elif self.compound_statement()[0]:
-            return True, 'good'
+        elif current_token_code == TokenCode.tc_BEGIN:
+            self.compound_statement()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_COMPOUND_STATEMENT_FOLLOW)
 
         # if
-        elif self.match(TokenCode.tc_IF):
+        elif current_token_code == TokenCode.tc_IF:
+            self.match(TokenCode.tc_IF)
+
             # if expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # if expression then
-            if not self.match(TokenCode.tc_THEN):
-                self.sourceLine.addError('^ Expected "then"', self.token.col)
+            self.match(TokenCode.tc_THEN)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FIRST)
 
             # if expression then statement
-            statement = self.statement()
-            if not statement[0]:
-                self.sourceLine.addError(statement[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.statement()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FOLLOW)
 
             # if expression then statement else
-            if not self.match(TokenCode.tc_ELSE):
-                self.sourceLine.addError('^ Expected "else"', self.token.col)
+            self.match(TokenCode.tc_ELSE)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FIRST)
 
             # if expression then statement else statement
-            statement = self.statement()
-            if not statement[0]:
-                self.sourceLine.addError(statement[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.statement()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FOLLOW)
 
         # while
-        elif self.match(TokenCode.tc_WHILE):
+        elif current_token_code == TokenCode.tc_WHILE:
+            self.match(TokenCode.tc_WHILE)
+
             # while expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # while expression do
-            if not self.match(TokenCode.tc_DO):
-                self.sourceLine.addError('^ Expected "do"', self.token.col)
+            self.match(TokenCode.tc_DO)
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FIRST)
 
             # while expression do statement
-            statement = self.statement()
-            if not statement[0]:
-                self.sourceLine.addError(statement[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.statement()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_STATEMENT_FOLLOW)
+
         # error
         else:
-            return False, '^ Expected "statement"'
+            self.match(TokenCode.tc_STATEMENT)
     def statement_marked(self):
         """ implements the CFG
 
@@ -814,7 +886,7 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION)
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # [ expression ]
             self.match(TokenCode.tc_RBRACK)
@@ -824,46 +896,45 @@ class PascalParser:
                 # [ expression ] assignop
                 self.match(TokenCode.tc_ASSIGNOP)
 
-                # [ expression ] assignop expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_FIRST)
+
+            # [ expression ] assignop expression
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
         # :=
         elif current_token_code == TokenCode.tc_ASSIGNOP:
             self.match(TokenCode.tc_ASSIGNOP)
 
             # := expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
-            return True, 'good'
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
+
         # (
         elif current_token_code == TokenCode.tc_LPAREN:
             self.match(TokenCode.tc_LPAREN)
 
             # ( expression_list
-            expression_list = self.expression_list()
-            if not expression_list[0]:
-                self.sourceLine.addError(expression_list[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
+            self.expression_list()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_LIST_FOLLOW)
 
             # ( expression_list )
-            if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ Expected ")"'
-
-            return True, "good"
+            self.match(TokenCode.tc_RPAREN)
 
         # ϵ
         else:
-            return True, "good"
+            pass
     def expression_list(self):
         """ implements the CFG
 
@@ -874,13 +945,13 @@ class PascalParser:
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_EXPRESSION)
+            self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
         self.expression_list_marked()
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED)
+            self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED_FOLLOW)
     def expression_list_marked(self):
         """ inplements the CFG
 
@@ -898,14 +969,14 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION)
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # , expression expression_list_marked
             self.expression_list_marked()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED)
+                self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED_FOLLOW)
 
         # ϵ
         else:
@@ -920,14 +991,14 @@ class PascalParser:
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION)
+            self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_FOLLOW)
 
         # simple_expression expression_marked
         self.expression_marked()
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_EXPRESSION_MARKED)
+            self.recover(NoneTerminal.nt_EXPRESSION_MARKED_FOLLOW)
     def expression_marked(self):
         """ implements the CFG
 
@@ -945,7 +1016,7 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION)
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_FOLLOW)
 
         # ϵ
         else:
@@ -964,21 +1035,21 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_SIGN)
+                self.recover(NoneTerminal.nt_SIGN_FOLLOW)
 
             # sign term
             self.term()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_TERM)
+                self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # sign term simple_expression_marked
             self.simple_expression_marked()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED_FOLLOW)
 
         # term
         elif current_token_code == TokenCode.tc_ID or\
@@ -990,18 +1061,18 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_TERM)
+                self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # term simple_expression_marked
             self.simple_expression_marked()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED_FOLLOW)
 
         # error
         else:
-            self.match(NoneTerminal.nt_SIMPLE_EXPRESSION)
+            self.match(TokenCode.tc_SIMPLE_EXPRESSION)
     def simple_expression_marked(self):
         """ implements the CFG
 
@@ -1021,14 +1092,14 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_TERM)
+                self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # addop term simple_expression_marked
             self.simple_expression_marked()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED_FOLLOW)
 
         # ϵ
         else:
@@ -1043,14 +1114,14 @@ class PascalParser:
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_FACTOR)
+            self.recover(NoneTerminal.nt_FACTOR_FOLLOW)
 
         # factor term_marked
         self.term_marked()
 
         # if we had had error in last function we try to recover
         if self.error:
-            self.recover(NoneTerminal.nt_FACTOR)
+            self.recover(NoneTerminal.nt_TERM_MARKED_FOLLOW)
     def term_marked(self):
         """ implements the CFG
 
@@ -1068,14 +1139,14 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_FACTOR)
+                self.recover(NoneTerminal.nt_FACTOR_FOLLOW)
 
             # mulop factor term_marked
             self.term_marked()
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_TERM_MARKED)
+                self.recover(NoneTerminal.nt_TERM_MARKED_FOLLOW)
 
         # ϵ
         else:
@@ -1101,7 +1172,7 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_FACTOR_MARKED)
+                self.recover(NoneTerminal.nt_FACTOR_MARKED_FOLLOW)
 
         # num
         elif current_token_code == TokenCode.tc_NUMBER:
@@ -1116,7 +1187,7 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION)
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # ( expression )
             self.match(TokenCode.tc_RPAREN)
@@ -1130,11 +1201,11 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_FACTOR)
+                self.recover(NoneTerminal.nt_FACTOR_FOLLOW)
 
         # error
         else:
-            self.match(NoneTerminal.nt_FACTOR)
+            self.match(TokenCode.tc_FACTOR)
     def factor_marked(self):
         """ implements the CFG.
 
@@ -1151,7 +1222,7 @@ class PascalParser:
             # ( expression_list
             self.expression_list()
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION_LIST)
+                self.recover(NoneTerminal.nt_EXPRESSION_LIST_FOLLOW)
 
             # ( expression_list )
             self.match(TokenCode.tc_RPAREN)
@@ -1165,7 +1236,7 @@ class PascalParser:
 
             # if we had had error in last function we try to recover
             if self.error:
-                self.recover(NoneTerminal.nt_EXPRESSION)
+                self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # [ expression ]
             self.match(TokenCode.tc_RBRACK)
@@ -1231,10 +1302,8 @@ class PascalParserTester:
     def testProgramError(self):
         filename = "test_files/pas_syntax_err"
         parser = PascalParser(filename)
-        sign = parser.program()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
+        parser.program()
+
 
 tester = PascalParserTester()
 tester.testProgramError()

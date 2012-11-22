@@ -78,7 +78,8 @@ class Lexicons:
 
             (id,                        (TokenCode.tc_ID, DataType.dt_ID, OpType.op_NONE)),
             (comment,                   (TokenCode.tc_COMMENT, DataType.dt_NONE, OpType.op_NONE)),
-            (Rep1(Any(" \t")),    IGNORE),
+            (Rep1(Str("\t")),                 IGNORE),
+            (Str(" "),                  (TokenCode.tc_SPACE, DataType.dt_NONE, OpType.op_NONE)),
             (Any("\n\r"),               (TokenCode.tc_NEWLINE, DataType.dt_NONE, OpType.op_NONE)),
             (AnyChar,                   (TokenCode.tc_ERROR, DataType.dt_NONE, OpType.op_NONE))
         ])
@@ -134,7 +135,38 @@ class SymbolTable:
 class SymbolTableEntry:
     def __init__(self):
         self.lexeme = None
+class SourceLine:
+    def __init__(self):
+        self.buffer = ""
+        self.lineNr = 1
+        self.errors = []
+        self.number_of_errors = 0
+    def addToken(self, token ):
+        if token.token_code == TokenCode.tc_NEWLINE or token.token_code == TokenCode.tc_EOF:
+            print str(self.lineNr).rjust(3) + ": " + self.buffer
+            for error in self.errors:
+                print error
 
+            self.buffer = ""
+            self.errors = []
+            self.lineNr += 1
+        else:
+            self.buffer += token.lexeme
+    def printing(self):
+        print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+        for error in self.errors:
+            print error
+
+        print
+        if self.number_of_errors <= 0:
+            print "No errors"
+        else:
+            print 'Number of errors: %i' %self.number_of_errors
+    def addError(self, error, spaces):
+        self.number_of_errors += 1
+        for i in range(spaces+5):
+            error = " " + error
+        self.errors.append(error)
 
 class PascalScanner:
     # scans file and returns stream of Tokens
@@ -143,6 +175,7 @@ class PascalScanner:
         f = open(filename, "r")
         self.scanner = Scanner(lexer, f, filename)
         self.symbol_table = SymbolTable()
+        self.source_line = SourceLine()
     def next_token(self):
         # returns a pointer to next token found
 
@@ -153,15 +186,28 @@ class PascalScanner:
         # verify read return a lexeme
         if temp[0]:
             # move data from temp variable into Token, insert into symbol_table
-            token = Token(temp[0][0], temp[0][1], temp[0][2],
-                self.scanner.start_line, self.scanner.start_col, temp[1])
+            token = Token(temp[0][0], temp[0][1], temp[0][2], self.scanner.start_line, self.scanner.start_col, temp[1])
             if token.token_code == TokenCode.tc_ID or token.token_code == TokenCode.tc_NUMBER:
                 token.symbol_table_entry = self.symbol_table.insert(token.lexeme)
-            return token
+
+            self.source_line.addToken(token)
+
+            if token.token_code == TokenCode.tc_NEWLINE or\
+               token.token_code == TokenCode.tc_SPACE or token.token_code == TokenCode.tc_TAB:
+                return self.next_token()
+            elif token.token_code == TokenCode.tc_ERROR:
+                self.source_line.addError("^ Illegal character", token.col)
+                return self.next_token()
+            else:
+                return token
 
         # end of file
-        else:
-            return Token(TokenCode.tc_EOF, DataType.dt_NONE, OpType.op_NONE, 0, 0, "EOF")
+        #else:
+            #token = Token(TokenCode.tc_EOF, DataType.dt_NONE, OpType.op_NONE, 0, 0, "EOF")
+            #self.source_line.addToken(token)
+            #return token
+    def add_error(self, error, spaces):
+        self.source_line.addError(error, spaces)
 
 class PascalScannerTester:
     def __init__(self):
