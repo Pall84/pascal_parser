@@ -50,7 +50,12 @@ class PascalParser:
         self.sourceLine = SourceLine()
         self.token = Token
         self.next_token()
+        self.error = None
         self.code = Code()
+    def get_token_code(self):
+        return self.token.token_code
+    def get_op_type(self):
+        return self.token.op_type
     def next_token(self):
         self.token = self.scanner.next_token()
 
@@ -68,13 +73,108 @@ class PascalParser:
             print
             print self.scanner.symbol_table.__str__()
     def match(self, token_code):
-        if self.token.token_code == token_code:
+        """ check if current token matches expected token.
+
+        if token does not match we add error to member variable error
+        """
+
+        current_token_code = self.get_token_code()
+
+        # we have a match
+        if current_token_code == token_code:
             self.next_token()
-            return True
+
+        # we do not have a match
         else:
-            return False
-    def eat_up_to_stop_or_sync_tokens(self, stop_tokens=tuple()):
+            self.error = 'Expected "%s"' % token_code
+
+    def recover(self, non_terminal=None ):
+        """ recovers from error
+
+        recovers by eating up all tokens up to synchronizing tokens or follow set tokens of the
+        where error originated.
+        """
         sync_tokens = TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN, TokenCode.tc_DOT
+        stop_tokens = None
+
+        # set follow token of non_terminal
+        if non_terminal == NoneTerminal.nt_SIGN_FOLLOW:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN, TokenCode.tc_NOT)
+
+        elif non_terminal == NoneTerminal.nt_FACTOR_MARKED_FOLLOW or non_terminal == NoneTerminal.nt_FACTOR_FOLLOW:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN, TokenCode.tc_NOT,
+                             TokenCode.tc_ADDOP, TokenCode.tc_RPAREN, TokenCode.tc_RBRACK, TokenCode.tc_DO,
+                             TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
+                             TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_TERM_MARKED_FOLLOW or non_terminal == NoneTerminal.nt_TERM_FOLLOW:
+            stop_tokens = (TokenCode.tc_ADDOP, TokenCode.tc_RPAREN, TokenCode.tc_RBRACK, TokenCode.tc_DO,
+                             TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
+                             TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_SIMPLE_EXPRESSION_FOLLOW or\
+             non_terminal == NoneTerminal.nt_EXPRESSION_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_EXPRESSION_FOLLOW:
+            stop_tokens = (TokenCode.tc_RPAREN, TokenCode.tc_RBRACK, TokenCode.tc_DO,
+                             TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
+                             TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_EXPRESSION_LIST_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_EXPRESSION_LIST_FOLLOW or\
+             non_terminal == NoneTerminal.nt_PARAMETER_LIST_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_PARAMETER_LIST_FOLLOW:
+            stop_tokens = (TokenCode.tc_RPAREN,)
+
+        elif non_terminal == NoneTerminal.nt_STATEMENT_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_STATEMENT_FOLLOW:
+            stop_tokens = (TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END)
+
+        elif non_terminal == NoneTerminal.nt_STATEMENT_LIST_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_STATEMENT_LIST_FOLLOW or\
+             non_terminal == NoneTerminal.nt_OPTIONAL_STATEMENT_FOLLOW:
+            stop_tokens = (TokenCode.tc_END,)
+
+        elif non_terminal == NoneTerminal.nt_COMPOUND_STATEMENT_FOLLOW:
+            stop_tokens = (TokenCode.tc_ELSE, TokenCode.tc_SEMICOL, TokenCode.tc_END, TokenCode.tc_DOT)
+
+        elif non_terminal == NoneTerminal.nt_ARGUMENTS_FOLLOW:
+            stop_tokens = (TokenCode.tc_COLON, TokenCode.tc_SEMICOL)
+
+        elif non_terminal == NoneTerminal.nt_SUBPROGRAM_HEAD_FOLLOW:
+            stop_tokens = (TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN)
+
+        elif non_terminal == NoneTerminal.nt_SUBPROGRAM_DECLARATION_FOLLOW or\
+             non_terminal == NoneTerminal.nt_STANDARD_TYPE_FOLLOW or\
+             non_terminal == NoneTerminal.nt_TYPE_FOLLOW:
+            stop_tokens = (TokenCode.tc_SEMICOL,)
+
+        elif non_terminal == NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FOLLOW:
+            stop_tokens = (TokenCode.tc_BEGIN,)
+
+        elif non_terminal == NoneTerminal.nt_DECLARATIONS_FOLLOW:
+            stop_tokens = (TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN)
+
+        elif non_terminal == NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FOLLOW or\
+             non_terminal == NoneTerminal.nt_IDENTIFIER_LIST_FOLLOW:
+            stop_tokens = (TokenCode.tc_RPAREN, TokenCode.tc_COLON)
+
+        # set of first tokens
+        elif non_terminal == NoneTerminal.nt_SIGN_FIRST:
+            stop_tokens = (TokenCode.tc_ADDOP,)
+
+        elif non_terminal == NoneTerminal.nt_FACTOR_MARKED_FIRST:
+            stop_tokens = (TokenCode.tc_LPAREN, TokenCode.tc_LBRACK)
+
+        elif non_terminal == NoneTerminal.nt_FACTOR_FIRST:
+            stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN, TokenCode.tc_NOT)
+
+
+
+
+        self.sourceLine.addError(self.error)
+        self.error = None
+
         sync_and_stop_tokens = sync_tokens + stop_tokens
         run = True
         for token in sync_and_stop_tokens:
@@ -702,26 +802,27 @@ class PascalParser:
                                |       assignop expression
                                |       ( expression_list )
                                |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # [
-        if self.match(TokenCode.tc_LBRACK):
+        if current_token_code == TokenCode.tc_LBRACK:
+            self.match(TokenCode.tc_LBRACK)
+
             # [ expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION)
 
             # [ expression ]
-            if not self.match(TokenCode.tc_RBRACK):
-                return False, '^ Expected "]"'
+            self.match(TokenCode.tc_RBRACK)
 
-            # [ expression ] assignop
-            if not self.match(TokenCode.tc_ASSIGNOP):
-                return False, '^ Expected ":="'
+            if not self.error:
+
+                # [ expression ] assignop
+                self.match(TokenCode.tc_ASSIGNOP)
 
                 # [ expression ] assignop expression
             expression = self.expression()
@@ -733,7 +834,9 @@ class PascalParser:
             return True, 'good'
 
         # :=
-        elif self.match(TokenCode.tc_ASSIGNOP):
+        elif current_token_code == TokenCode.tc_ASSIGNOP:
+            self.match(TokenCode.tc_ASSIGNOP)
+
             # := expression
             expression = self.expression()
             if not expression[0]:
@@ -743,7 +846,9 @@ class PascalParser:
                                                     TokenCode.tc_SEMICOL, TokenCode.tc_END))
             return True, 'good'
         # (
-        elif self.match(TokenCode.tc_LPAREN):
+        elif current_token_code == TokenCode.tc_LPAREN:
+            self.match(TokenCode.tc_LPAREN)
+
             # ( expression_list
             expression_list = self.expression_list()
             if not expression_list[0]:
@@ -763,142 +868,140 @@ class PascalParser:
         """ implements the CFG
 
            expression_list     ::=     expression expression_list_marked
-
-        return true if input is according to grammar, false otherwise
         """
         # expression
-        expression = self.expression()
-        if expression[0]:
-            # expression expression_list_marked
-            expression_list_marked = self.expression_list_marked()
-            if not expression_list_marked[0]:
-                self.sourceLine.addError(expression_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
+        self.expression()
 
-            return True, 'good'
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_EXPRESSION)
 
-        # error
-        else:
-            return expression
+        self.expression_list_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED)
     def expression_list_marked(self):
         """ inplements the CFG
 
            expression_list_marked      ::=     , expression expression_list_marked
                                        |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # ,
-        if self.match(TokenCode.tc_COMMA):
+        if current_token_code == TokenCode.tc_COMMA:
+            self.match(TokenCode.tc_COMMA)
+
             # , expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION)
 
             # , expression expression_list_marked
-            expression_list_marked = self.expression_list_marked()
-            if not expression_list_marked[0]:
-                self.sourceLine.addError(expression_list_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
+            self.expression_list_marked()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED)
+
         # ϵ
         else:
-            return True, 'good'
+            pass
     def expression(self):
         """ implements the CFG
 
            expression      ::=     simple_expression1 expression_marked
-
-        return true if input is according to grammar, false otherwise
         """
         # simple_expression
-        simple_expression = self.simple_expression()
-        if simple_expression[0]:
-            # simple_expression expression_marked
-            expression_marked = self.expression_marked()
-            if not expression_marked[0]:
-                self.sourceLine.addError(expression_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
-            return True, 'good'
+        self.simple_expression()
 
-        # error
-        else:
-            return simple_expression
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION)
+
+        # simple_expression expression_marked
+        self.expression_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_EXPRESSION_MARKED)
     def expression_marked(self):
         """ implements the CFG
 
            expression_marked   ;;=     relop simple_expression1
                                |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # relop
-        if self.match(TokenCode.tc_RELOP):
+        if current_token_code == TokenCode.tc_RELOP:
+            self.match(TokenCode.tc_RELOP)
+
             # relop simple_expression
-            simple_expression = self.simple_expression()
-            if not simple_expression[0]:
-                self.sourceLine.addError(simple_expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
-            return True, 'good'
+            self.simple_expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION)
 
         # ϵ
         else:
-            return True, "good"
+            pass
     def simple_expression(self):
         """ implements the CFG
 
            simple_expresson    ::=     term simple_expression_marked
                                |       sign term simple_expression_marked
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # sign
-        sign = self.sign()
-        if sign[0]:
+        if current_token_code == TokenCode.tc_ADDOP:
+            self.sign()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SIGN)
+
             # sign term
-            term = self.term()
-            if not term[0]:
-                self.sourceLine.addError(term[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.term()
 
-            simple_expression_marked = self.simple_expression_marked()
-            if not simple_expression_marked[0]:
-                self.sourceLine.addError(simple_expression_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TERM)
 
-            return True, 'good'
+            # sign term simple_expression_marked
+            self.simple_expression_marked()
 
-        elif self.term()[0]:
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
+
+        # term
+        elif current_token_code == TokenCode.tc_ID or\
+             current_token_code == TokenCode.tc_NUMBER or\
+             current_token_code == TokenCode.tc_LPAREN or\
+             current_token_code == TokenCode.tc_NOT:
+
+            self.term()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TERM)
+
             # term simple_expression_marked
-            simple_expression_marked = self.simple_expression_marked()
-            if not simple_expression_marked[0]:
-                self.sourceLine.addError(simple_expression_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.simple_expression_marked()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
 
         # error
         else:
-            return False, '^ Expected "simple_expression"'
+            self.match(NoneTerminal.nt_SIMPLE_EXPRESSION)
     def simple_expression_marked(self):
         """ implements the CFG
 
@@ -907,88 +1010,76 @@ class PascalParser:
 
         return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # addop
-        if self.match(TokenCode.tc_ADDOP):
+        if current_token_code == TokenCode.tc_ADDOP:
+            self.match(TokenCode.tc_ADDOP)
+
             # addop term
-            term = self.term()
-            if not term[0]:
-                self.sourceLine.addError(term[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.term()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TERM)
 
             # addop term simple_expression_marked
-            simple_expression_marked = self.simple_expression_marked()
-            if not simple_expression_marked[0]:
-                self.sourceLine.addError(simple_expression_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.simple_expression_marked()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_MARKED)
 
         # ϵ
         else:
-            return True, "good"
+            pass
     def term(self):
         """ implements the CFG
 
            term    ::=     factor term_marked
-
-        return true if input is according to grammar, false otherwise
         """
         # factor
-        factor = self.factor()
-        if factor[0]:
-            # factor term_marked
-            term_marked = self.term_marked()
-            if not term_marked[0]:
-                self.sourceLine.addError(term_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
-            return True, 'good'
+        self.factor()
 
-        # error
-        else:
-            return factor
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_FACTOR)
+
+        # factor term_marked
+        self.term_marked()
+
+        # if we had had error in last function we try to recover
+        if self.error:
+            self.recover(NoneTerminal.nt_FACTOR)
     def term_marked(self):
         """ implements the CFG
 
            term_marked    ::=     mulop factor factor term_marked
                            |      ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # mulop
-        if self.match(TokenCode.tc_MULOP):
+        if current_token_code == TokenCode.tc_MULOP:
+            self.match(TokenCode.tc_MULOP)
 
             # mulop factor
-            factor = self.factor()
-            if not factor[0]:
-                self.sourceLine.addError(factor[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN,
-                                                    TokenCode.tc_NOT, TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.factor()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_FACTOR)
 
             # mulop factor term_marked
-            term_marked = self.term_marked()
-            if not term_marked[0]:
-                self.sourceLine.addError(term_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
-            return True, 'good'
+            self.term_marked()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_TERM_MARKED)
 
         # ϵ
         else:
-            return True, "good"
+            pass
     def factor(self):
         """ implements the CFG
 
@@ -999,124 +1090,106 @@ class PascalParser:
 
         return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # id
-        if self.match(TokenCode.tc_ID):
+        if current_token_code == TokenCode.tc_ID:
+            self.match(TokenCode.tc_ID)
 
             # id factor_marked
-            factor_marked = self.factor_marked()
-            if not factor_marked[0]:
-                self.sourceLine.addError(factor_marked[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN,
-                                                    TokenCode.tc_NOT, TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.factor_marked()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_FACTOR_MARKED)
 
         # num
-        elif self.match(TokenCode.tc_NUMBER):
-
-            return True, 'good'
+        elif current_token_code == TokenCode.tc_NUMBER:
+            self.match(TokenCode.tc_NUMBER)
 
         # (
-        elif self.match(TokenCode.tc_LPAREN):
+        elif current_token_code == TokenCode.tc_LPAREN:
+            self.match(TokenCode.tc_LPAREN)
 
             # ( expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION)
 
             # ( expression )
-            if not self.match(TokenCode.tc_RPAREN):
-                return False, '^ Expected ")"'
-
-            return True, 'good'
+            self.match(TokenCode.tc_RPAREN)
 
         # not
-        elif self.match(TokenCode.tc_NOT):
+        elif current_token_code == TokenCode.tc_NOT:
+            self.match(TokenCode.tc_NOT)
 
             # not factor
-            factor = self.factor()
-            if not factor[0]:
-                self.sourceLine.addError(factor[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN,
-                                                    TokenCode.tc_NOT, TokenCode.tc_ADDOP, TokenCode.tc_RPAREN,
-                                                    TokenCode.tc_RBRACK, TokenCode.tc_DO, TokenCode.tc_THEN,
-                                                    TokenCode.tc_COMMA, TokenCode.tc_ELSE, TokenCode.tc_SEMICOL,
-                                                    TokenCode.tc_END))
+            self.factor()
 
-            return True, 'good'
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_FACTOR)
 
         # error
         else:
-            return False, '^ Expected "factor"'
+            self.match(NoneTerminal.nt_FACTOR)
     def factor_marked(self):
         """ implements the CFG.
 
               factor_marked   ::=     ( expression_list )
                               |       [ expression ]
                               |       ϵ
-
-        return true if input is according to grammar, false otherwise
         """
+        current_token_code = self.get_token_code()
+
         # (
-        if self.match(TokenCode.tc_LPAREN):
+        if current_token_code == TokenCode.tc_LPAREN:
+            self.match(TokenCode.tc_LPAREN)
 
             # ( expression_list
-            expression_list = self.expression_list()
-            if not expression_list[0]:
-                self.sourceLine.addError(expression_list[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RPAREN))
+            self.expression_list()
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION_LIST)
 
             # ( expression_list )
-            if not self.match(TokenCode.tc_RPAREN):
-                return False,'^ Expected ")"'
-
-            return True, "good"
+            self.match(TokenCode.tc_RPAREN)
 
         # [
-        elif self.match(TokenCode.tc_LBRACK):
+        elif current_token_code == TokenCode.tc_LBRACK:
+            self.match(TokenCode.tc_LBRACK)
 
             # [ expression
-            expression = self.expression()
-            if not expression[0]:
-                self.sourceLine.addError(expression[1], self.token.col)
-                self.eat_up_to_stop_or_sync_tokens((TokenCode.tc_RPAREN, TokenCode.tc_RBRACK,TokenCode.tc_DO,
-                                                    TokenCode.tc_THEN, TokenCode.tc_COMMA, TokenCode.tc_ELSE,
-                                                    TokenCode.tc_SEMICOL, TokenCode.tc_END))
+            self.expression()
+
+            # if we had had error in last function we try to recover
+            if self.error:
+                self.recover(NoneTerminal.nt_EXPRESSION)
 
             # [ expression ]
-            if not self.match(TokenCode.tc_RBRACK):
-                return False, '^ Expected "]"'
-
-            return True, "good"
+            self.match(TokenCode.tc_RBRACK)
 
         # ϵ
         else:
-            return True, "good"
+            pass
     def sign(self):
         """ implements the CFG.
 
               sign    ::=     +
                       |       -
-
-        @return true if input is according to grammar false otherwise.
         """
-        if self.token.op_type == OpType.op_PLUS:
-            self.next_token()
-            return True, "good"
+        current_op_type = self.get_op_type()
 
-        elif self.token.op_type == OpType.op_MINUS:
-            self.next_token()
-            return True, "good"
+        if current_op_type == OpType.op_PLUS:
+            self.match(TokenCode.tc_ADDOP)
+
+        elif current_op_type == OpType.op_MINUS:
+            self.match(TokenCode.tc_ADDOP)
 
         # does not fit syntax
         else:
-            return False, '^ Expected "sign"'
+            self.match(TokenCode.tc_SIGN)
 
 
 class PascalParserTester:
