@@ -87,8 +87,17 @@ class PascalParser:
                 if self.token.token_code == token:
                     run = False
                     break
-    def newTemp(self):
-        pass
+
+    def new_temp(self):
+        symbol_table_entry = self.code.new_temp()
+        self.scanner.symbol_table.insert(symbol_table_entry)
+        self.code.generate(CodeOp.cd_VAR, None, None, symbol_table_entry)
+        return symbol_table_entry
+    def new_label(self):
+        symbol_table_entry = self.code.new_label()
+        self.scanner.symbol_table.insert(symbol_table_entry)
+        self.code.generate(CodeOp.cd_LABEL, None, None, symbol_table_entry)
+        return symbol_table_entry
 
     def program(self):
         """ implements the CFG
@@ -1109,6 +1118,7 @@ class PascalParser:
         else:
             return False, '^ Expected "sign"'
 
+
 class PascalParserTester:
     def testLexical(self):
         filename = "test_files/pascal_lex1"
@@ -1154,4 +1164,4 @@ class PascalParserTester:
             print sign[1]
 
 tester = PascalParserTester()
-tester.testParser1()
+tester.testProgramError()
