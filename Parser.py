@@ -17,6 +17,12 @@ class PascalParser:
         return self.token.op_type
     def next_token(self):
         self.token = self.scanner.next_token()
+        if self.token == None:
+            print self.scanner.source_line.printing()
+            print
+            print self.scanner.symbol_table.__str__()
+            print
+            print self.code.__str__()
     def match(self, token_code):
         """ check if current token matches expected token.
 
@@ -210,13 +216,13 @@ class PascalParser:
 
     def new_temp(self):
         symbol_table_entry = self.code.new_temp()
-        self.scanner.symbol_table.insert(symbol_table_entry)
-        self.code.generate(CodeOp.cd_VAR, None, None, symbol_table_entry)
+        self.scanner.symbol_table.insert(symbol_table_entry.lexeme)
+        self.code.generate(CodeOp.cd_VAR, None, None, symbol_table_entry.lexeme)
         return symbol_table_entry
     def new_label(self):
         symbol_table_entry = self.code.new_label()
-        self.scanner.symbol_table.insert(symbol_table_entry)
-        self.code.generate(CodeOp.cd_LABEL, None, None, symbol_table_entry)
+        self.scanner.symbol_table.insert(symbol_table_entry.lexeme)
+        self.code.generate(CodeOp.cd_LABEL, None, None, symbol_table_entry.lexeme)
         return symbol_table_entry
 
     def program(self):
@@ -783,10 +789,11 @@ class PascalParser:
 
         # id
         if current_token_code == TokenCode.tc_ID:
+            entry = self.token.symbol_table_entry
             self.match(TokenCode.tc_ID)
 
             # id statement_marked
-            self.statement_marked()
+            result_entry = self.statement_marked(entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -805,7 +812,7 @@ class PascalParser:
             self.match(TokenCode.tc_IF)
 
             # if expression
-            self.expression()
+            result_entry = self.expression()
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -867,7 +874,7 @@ class PascalParser:
         # error
         else:
             self.match(TokenCode.tc_STATEMENT)
-    def statement_marked(self):
+    def statement_marked(self, entry):
         """ implements the CFG
 
            statement_marked   ::=      [ expression ] assignop expression
@@ -912,7 +919,9 @@ class PascalParser:
             self.match(TokenCode.tc_ASSIGNOP)
 
             # := expression
-            self.expression()
+            result_entry = self.expression()
+
+            self.code.generate(CodeOp.cd_ASSIGN, result_entry.lexeme, None, entry.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -987,19 +996,21 @@ class PascalParser:
            expression      ::=     simple_expression1 expression_marked
         """
         # simple_expression
-        self.simple_expression()
+        entry = self.simple_expression()
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_SIMPLE_EXPRESSION_FOLLOW)
 
         # simple_expression expression_marked
-        self.expression_marked()
+        result_entry = self.expression_marked(entry)
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_EXPRESSION_MARKED_FOLLOW)
-    def expression_marked(self):
+
+        return result_entry
+    def expression_marked(self, entry):
         """ implements the CFG
 
            expression_marked   ;;=     relop simple_expression1
@@ -1009,10 +1020,13 @@ class PascalParser:
 
         # relop
         if current_token_code == TokenCode.tc_RELOP:
+            op = self.token.op_type
             self.match(TokenCode.tc_RELOP)
 
             # relop simple_expression
-            self.simple_expression()
+            entry2 = self.simple_expression()
+            result_entry = self.new_temp()
+            self.code.generate(op,entry.lexeme, entry2.lexeme, result_entry.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1020,7 +1034,9 @@ class PascalParser:
 
         # ϵ
         else:
-            pass
+            result_entry = entry
+
+        return result_entry
     def simple_expression(self):
         """ implements the CFG
 
@@ -1028,6 +1044,7 @@ class PascalParser:
                                |       sign term simple_expression_marked
         """
         current_token_code = self.get_token_code()
+        result_entry = None
 
         # sign
         if current_token_code == TokenCode.tc_ADDOP:
@@ -1038,14 +1055,16 @@ class PascalParser:
                 self.recover(NoneTerminal.nt_SIGN_FOLLOW)
 
             # sign term
-            self.term()
+            entry = self.term()
+            new_temp = self.new_temp()
+            self.code.generate(CodeOp.cd_UMINUS, entry.lexeme, None, new_temp.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
                 self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # sign term simple_expression_marked
-            self.simple_expression_marked()
+            result_entry = self.simple_expression_marked(new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1057,14 +1076,14 @@ class PascalParser:
              current_token_code == TokenCode.tc_LPAREN or\
              current_token_code == TokenCode.tc_NOT:
 
-            self.term()
+            entry = self.term()
 
             # if we had had error in last function we try to recover
             if self.error:
                 self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # term simple_expression_marked
-            self.simple_expression_marked()
+            result_entry = self.simple_expression_marked(entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1073,7 +1092,9 @@ class PascalParser:
         # error
         else:
             self.match(TokenCode.tc_SIMPLE_EXPRESSION)
-    def simple_expression_marked(self):
+
+        return result_entry
+    def simple_expression_marked(self, entry):
         """ implements the CFG
 
            simple_expression_marked    ::=     addop term simple_expression_marked
@@ -1082,20 +1103,24 @@ class PascalParser:
         return true if input is according to grammar, false otherwise
         """
         current_token_code = self.get_token_code()
+        result_entry = None
 
         # addop
         if current_token_code == TokenCode.tc_ADDOP:
+            op = self.token.op_type
             self.match(TokenCode.tc_ADDOP)
 
             # addop term
-            self.term()
+            entry2 = self.term()
+            new_temp = self.new_temp()
+            self.code.generate(op, entry.lexeme, entry2.lexeme, new_temp.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
                 self.recover(NoneTerminal.nt_TERM_FOLLOW)
 
             # addop term simple_expression_marked
-            self.simple_expression_marked()
+            result_entry =  self.simple_expression_marked(new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1103,26 +1128,30 @@ class PascalParser:
 
         # ϵ
         else:
-            pass
+            result_entry = entry
+
+        return result_entry
     def term(self):
         """ implements the CFG
 
            term    ::=     factor term_marked
         """
         # factor
-        self.factor()
+        entry = self.factor()
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_FACTOR_FOLLOW)
 
         # factor term_marked
-        self.term_marked()
+        result_entry = self.term_marked(entry)
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_TERM_MARKED_FOLLOW)
-    def term_marked(self):
+
+        return result_entry
+    def term_marked(self, entry):
         """ implements the CFG
 
            term_marked    ::=     mulop factor factor term_marked
@@ -1132,17 +1161,20 @@ class PascalParser:
 
         # mulop
         if current_token_code == TokenCode.tc_MULOP:
+            op = self.token.op_type
             self.match(TokenCode.tc_MULOP)
 
             # mulop factor
-            self.factor()
+            entry2 = self.factor()
+            new_temp = self.new_temp()
+            self.code.generate(op, entry.lexeme, entry2.lexeme, new_temp.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
                 self.recover(NoneTerminal.nt_FACTOR_FOLLOW)
 
             # mulop factor term_marked
-            self.term_marked()
+            result_entry = self.term_marked(new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1150,7 +1182,8 @@ class PascalParser:
 
         # ϵ
         else:
-            pass
+            result_entry = entry
+        return result_entry
     def factor(self):
         """ implements the CFG
 
@@ -1162,13 +1195,15 @@ class PascalParser:
         return true if input is according to grammar, false otherwise
         """
         current_token_code = self.get_token_code()
+        result_entry = None
 
         # id
         if current_token_code == TokenCode.tc_ID:
+            entry = self.token.symbol_table_entry
             self.match(TokenCode.tc_ID)
 
             # id factor_marked
-            self.factor_marked()
+            result_entry = self.factor_marked(entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1176,14 +1211,16 @@ class PascalParser:
 
         # num
         elif current_token_code == TokenCode.tc_NUMBER:
+            result_entry = self.token.symbol_table_entry
             self.match(TokenCode.tc_NUMBER)
+            return result_entry
 
         # (
         elif current_token_code == TokenCode.tc_LPAREN:
             self.match(TokenCode.tc_LPAREN)
 
             # ( expression
-            self.expression()
+            result_entry = self.expression()
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1197,7 +1234,9 @@ class PascalParser:
             self.match(TokenCode.tc_NOT)
 
             # not factor
-            self.factor()
+            entry = self.factor()
+            result_entry = self.new_temp()
+            self.code.generate(CodeOp.cd_NOT, entry, None, result_entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1206,7 +1245,8 @@ class PascalParser:
         # error
         else:
             self.match(TokenCode.tc_FACTOR)
-    def factor_marked(self):
+        return result_entry
+    def factor_marked(self, entry):
         """ implements the CFG.
 
               factor_marked   ::=     ( expression_list )
@@ -1220,7 +1260,7 @@ class PascalParser:
             self.match(TokenCode.tc_LPAREN)
 
             # ( expression_list
-            self.expression_list()
+            result_entry = self.expression_list()
             if self.error:
                 self.recover(NoneTerminal.nt_EXPRESSION_LIST_FOLLOW)
 
@@ -1232,7 +1272,7 @@ class PascalParser:
             self.match(TokenCode.tc_LBRACK)
 
             # [ expression
-            self.expression()
+            result_entry = self.expression()
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1243,7 +1283,8 @@ class PascalParser:
 
         # ϵ
         else:
-            pass
+            result_entry = entry
+        return result_entry
     def sign(self):
         """ implements the CFG.
 
@@ -1264,46 +1305,22 @@ class PascalParser:
 
 
 class PascalParserTester:
-    def testLexical(self):
-        filename = "test_files/pascal_lex1"
-        parser = PascalParser.PascalParser(filename)
-        sign = parser.program()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
-    def testSign(self):
-        filename = "test_files/sign"
-        parser = PascalParser.PascalParser(filename)
-        sign = parser.sign()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
-    def testType(self):
-        filename = "test_files/type"
-        parser = PascalParser.PascalParser(filename)
-        sign = parser.type()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
-    def testParser1(self):
-        filename = "test_files/parser1"
-        parser = PascalParser(filename)
-        sign = parser.program()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
     def testProgramCorrect(self):
         filename = "test_files/pas_syntax_ok"
         parser = PascalParser(filename)
-        sign = parser.program()
-        if not sign[0]:
-            print "sign error"
-            print sign[1]
+        parser.program()
+
     def testProgramError(self):
         filename = "test_files/pas_syntax_err"
         parser = PascalParser(filename)
         parser.program()
 
+    def testProgramCode(self):
+        filename = "test_files/code"
+        parser = PascalParser(filename)
+        parser.program()
 
 tester = PascalParserTester()
-tester.testProgramError()
+#tester.testProgramCorrect()
+#tester.testProgramError()
+tester.testProgramCode()

@@ -153,7 +153,7 @@ class SourceLine:
         else:
             self.buffer += token.lexeme
     def printing(self):
-        print (str(self.lineNr).rjust(3) + ': ' + self.line).strip('\n')
+        print (str(self.lineNr).rjust(3) + ': ' + self.buffer).strip('\n')
         for error in self.errors:
             print error
 
@@ -193,7 +193,7 @@ class PascalScanner:
             self.source_line.addToken(token)
 
             if token.token_code == TokenCode.tc_NEWLINE or\
-               token.token_code == TokenCode.tc_SPACE or token.token_code == TokenCode.tc_TAB:
+               token.token_code == TokenCode.tc_SPACE or token.token_code == TokenCode.tc_COMMENT:
                 return self.next_token()
             elif token.token_code == TokenCode.tc_ERROR:
                 self.source_line.addError("^ Illegal character", token.col)
