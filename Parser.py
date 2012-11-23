@@ -222,7 +222,6 @@ class PascalParser:
     def new_label(self):
         symbol_table_entry = self.code.new_label()
         self.scanner.symbol_table.insert(symbol_table_entry.lexeme)
-        self.code.generate(CodeOp.cd_LABEL, None, None, symbol_table_entry.lexeme)
         return symbol_table_entry
 
     def program(self):
@@ -812,7 +811,10 @@ class PascalParser:
             self.match(TokenCode.tc_IF)
 
             # if expression
-            result_entry = self.expression()
+            next = self.new_label()
+            false = self.new_label()
+            expression = self.expression()
+            self.code.generate(CodeOp.cd_EQ,expression.lexeme, "0", false.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -827,6 +829,8 @@ class PascalParser:
 
             # if expression then statement
             self.statement()
+            self.code.generate(CodeOp.cd_GOTO, None, None, next.lexeme)
+            self.code.generate(CodeOp.cd_LABEL, None, None, false.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -841,6 +845,7 @@ class PascalParser:
 
             # if expression then statement else statement
             self.statement()
+            self.code.generate(CodeOp.cd_LABEL, None, None, next.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1026,7 +1031,14 @@ class PascalParser:
             # relop simple_expression
             entry2 = self.simple_expression()
             result_entry = self.new_temp()
-            self.code.generate(op,entry.lexeme, entry2.lexeme, result_entry.lexeme)
+            true = self.new_label()
+            next = self.new_label()
+            self.code.generate(op,entry.lexeme, entry2.lexeme, true.lexeme)
+            self.code.generate(CodeOp.cd_ASSIGN,"0", None, result_entry.lexeme)
+            self.code.generate(CodeOp.cd_GOTO, None, None, next.lexeme)
+            self.code.generate(CodeOp.cd_LABEL, None, None, true.lexeme)
+            self.code.generate(CodeOp.cd_ASSIGN, "1", None, result_entry.lexeme)
+            self.code.generate(CodeOp.cd_LABEL, None, None, next.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:

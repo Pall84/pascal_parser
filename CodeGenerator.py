@@ -32,10 +32,10 @@ class Code:
         return symbol_table_entry
 
     def new_label(self):
-        label = 't%i' % self.label_index
+        label = 'label%i' % self.label_index
         symbol_table_entry = SymbolTableEntry()
         symbol_table_entry.lexeme = label
-        self.temp_index += 1
+        self.label_index += 1
         return symbol_table_entry
 
     def generate(self, op, arg1, arg2, result):
