@@ -303,7 +303,7 @@ class PascalParser:
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_PROGRAM_FOLLOW)
-    def identifier_list(self):
+    def identifier_list(self, entry_list=None):
         """implements the CFG.
 
            identifier_list     ::=     id identifier_list_marked
@@ -311,6 +311,9 @@ class PascalParser:
         return true if input is according to grammar, false otherwise
         """
         # id
+        if not entry_list == None:
+            entry = self.token.symbol_table_entry
+            entry_list.append(entry)
         self.match(TokenCode.tc_ID)
 
         # if we had had error in last function we try to recover
@@ -318,12 +321,12 @@ class PascalParser:
             self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FIRST)
 
         # id identifier_list_marked
-        self.identifier_list_marked()
+        self.identifier_list_marked(entry_list)
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FOLLOW)
-    def identifier_list_marked(self):
+    def identifier_list_marked(self, entry_list):
         """ implements the CFG
 
             identifier_list_marked  ::=     , id identifier_list_marked
@@ -336,6 +339,9 @@ class PascalParser:
             self.match(TokenCode.tc_COMMA)
 
             # , id
+            if entry_list:
+                entry = self.token.symbol_table_entry
+                entry_list.append(entry)
             self.match(TokenCode.tc_ID)
 
             # if we had had error in last function we try to recover
@@ -343,7 +349,7 @@ class PascalParser:
                 self.recover(NoneTerminal.nt_IDENTIFIER_LIST_MARKED_FIRST)
 
             #, id identifier_list_marked
-            self.identifier_list_marked()
+            self.identifier_list_marked(entry_list)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -365,7 +371,10 @@ class PascalParser:
             self.match(TokenCode.tc_VAR)
 
             # var identifier_list
-            self.identifier_list()
+            entry_list = []
+            self.identifier_list(entry_list)
+            for entry in entry_list:
+                self.code.generate(CodeOp.cd_VAR, None, None, entry.lexeme)
 
             # if we had had error in last function we try to recover
             if self.error:
