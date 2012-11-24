@@ -81,7 +81,7 @@ class TokenCode:
     tc_COMMENT = "COMMENT"
     tc_NEWLINE = "NEWLINE"
     tc_ERROR = "ERROR"
-    tc_ERROR = "ERROR2"
+    tc_ERROR2 = "ERROR2"
     tc_EOF = "EOF"
     tc_SPACE = "SPACE"
     tc_TAB = "TAB"

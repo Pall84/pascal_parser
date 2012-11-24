@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 __author__ = 'palleymundsson'
-from Lexical import SymbolTableEntry
-
-# CodeOp m op; /* operator */
-# SymbolTableEntry* m arg1; /* arg1 is in symbol table */
-# SymbolTableEntry* m arg2; /* arg2 is in symbol table */
-# SymbolTableEntry* m result;/* result is in symbol table */
+from Enums import *
 
 class Quadruple:
     def __init__(self, op="", arg1="", arg2="", result=""):
@@ -24,27 +19,70 @@ class Code:
         self.label_index = 1
         self.quadrople_list = []
 
+    def __str__(self):
+        buffer = ""
+        self.label_before = False
+        for q in self.quadrople_list:
+            if q.op:
+                if q.op == CodeOp.cd_LABEL:
+                    buffer += (str(q.result)+":").rjust(10)
+                    self.label_before = True
+                elif self.label_before:
+                    self.label_before = False
+                    buffer += str(q.op).rjust(10)
+
+                    if q.arg1:
+                        buffer += str(q.arg1).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    if q.arg2:
+                        buffer += str(q.arg2).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    if q.result:
+                        buffer += str(q.result).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    buffer += "\n"
+                else:
+                    buffer += str(q.op).rjust(20)
+
+                    if q.arg1:
+                        buffer += str(q.arg1).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    if q.arg2:
+                        buffer += str(q.arg2).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    if q.result:
+                        buffer += str(q.result).rjust(10)
+                    else:
+                        buffer += " ".rjust(10)
+
+                    buffer += "\n"
+
+        return buffer
+
     def new_temp(self):
+        """ generates new temporal variable. """
         temp = 't%i' % self.temp_index
-        symbol_table_entry = SymbolTableEntry()
-        symbol_table_entry.lexeme = temp
         self.temp_index += 1
-        return symbol_table_entry
+        return temp
 
     def new_label(self):
-        label = 'label%i' % self.label_index
-        symbol_table_entry = SymbolTableEntry()
-        symbol_table_entry.lexeme = label
+        """ generates new label. """
+        label = 'lab%i' % self.label_index
         self.label_index += 1
-        return symbol_table_entry
+        return label
 
     def generate(self, op, arg1, arg2, result):
         quadruple = Quadruple(op, arg1, arg2, result)
         self.quadrople_list.append(quadruple)
 
-    def __str__(self):
-        buffer = "Op".rjust(10) + "Arg1".rjust(10) + "Arg2".rjust(10) + "Result".rjust(10) + "\n"
-        for q in self.quadrople_list:
-            buffer += str(q.op).rjust(10) + str(q.arg1).rjust(10) + str(q.arg2).rjust(10) + str(q.result).rjust(10) + "\n"
 
-        return buffer

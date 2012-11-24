@@ -5,30 +5,54 @@ from Lexical import *
 from CodeGenerator import *
 
 class PascalParser:
+    """ parser part of pascal language.
+
+    repeatedly ask for next token in source code and checks if it
+    fits the CFC for subset of pascal language, if it does not fit it
+    tells scanner what token it was expecting and tries to recover from that
+    error. Builds TAC intermediate code while parsing.
+    """
+
     def __init__(self, filename):
+        """ initializer pascal parser
+
+        initializer pascal scanner with filename of source code.
+        gets first token from scanner.
+        sets error to none.
+        initializer TAC code generator.
+        """
         self.scanner = PascalScanner(filename)
-        self.token = Token
         self.next_token()
         self.error = None
         self.code = Code()
+
+    def __str__(self):
+        printout = ""
+        if self.scanner.source_line.number_of_errors > 0:
+            printout = self.scanner.__str__()
+        else:
+            printout = self.code.__str__()
+
+        return printout
+
     def get_token_code(self):
+        """ returns token code from current token. """
         return self.token.token_code
+
     def get_op_type(self):
+        """ returns op type of current token. """
         return self.token.op_type
+
     def next_token(self):
+        """ loads next token from source code. """
         self.token = self.scanner.next_token()
-        if self.token == None:
-            print self.scanner.source_line.printing()
-            print
-            print self.scanner.symbol_table.__str__()
-            print
-            print self.code.__str__()
+
     def match(self, token_code):
-        """ check if current token matches expected token.
+        """ check if token code matches current token token code.
 
-        if token does not match we add error to member variable error
+        if token code matches current token token code we load next token.
+        if token code does not match current token code we add error.
         """
-
         current_token_code = self.get_token_code()
 
         # we have a match
@@ -42,13 +66,14 @@ class PascalParser:
     def recover(self, non_terminal=None ):
         """ recovers from error
 
-        recovers by eating up all tokens up to synchronizing tokens or follow set tokens of the
-        where error originated.
+        Recovers by eating up all tokens up to synchronizing tokens or stop tokens
+        who are first or follow set of tokens for None terminal in pascal CFG
+        We add error to source code and clear error variable.
         """
         sync_tokens = TokenCode.tc_VAR, TokenCode.tc_FUNCTION, TokenCode.tc_PROCEDURE, TokenCode.tc_BEGIN, TokenCode.tc_DOT
         stop_tokens = None
 
-        # set follow token of non_terminal
+        # follow tokens of non_terminal
         if non_terminal == NoneTerminal.nt_SIGN_FOLLOW:
             stop_tokens = (TokenCode.tc_ID, TokenCode.tc_NUMBER, TokenCode.tc_LPAREN, TokenCode.tc_NOT)
 
@@ -113,7 +138,7 @@ class PascalParser:
         elif non_terminal == NoneTerminal.nt_PROGRAM_FOLLOW:
             stop_tokens = (TokenCode.tc_EOF,)
 
-        # set of first tokens
+        # first tokens of non_terminal
         elif non_terminal == NoneTerminal.nt_SIGN_FIRST:
             stop_tokens = (TokenCode.tc_ADDOP,)
 
@@ -198,9 +223,11 @@ class PascalParser:
             stop_tokens = (TokenCode.tc_COMMA, TokenCode.tc_RPAREN, TokenCode.tc_COLON)
 
 
+        # add error to source code and clear error variable
         self.scanner.add_error(self.error, self.token.col)
         self.error = None
 
+        # eating up tokens
         sync_and_stop_tokens = sync_tokens + stop_tokens
         run = True
         for token in sync_and_stop_tokens:
@@ -215,14 +242,55 @@ class PascalParser:
                     break
 
     def new_temp(self):
-        symbol_table_entry = self.code.new_temp()
-        self.scanner.symbol_table.insert(symbol_table_entry.lexeme)
-        self.code.generate(CodeOp.cd_VAR, None, None, symbol_table_entry.lexeme)
-        return symbol_table_entry
+        """ generates new temporal variable.
+
+        returns reference to symbol table entry of temporal variable.
+        """
+        temp = self.code.new_temp()
+        entry =  self.scanner.symbol_table.insert(temp)
+        self.code.generate(CodeOp.cd_VAR, None, None, temp)
+        return entry
+
     def new_label(self):
-        symbol_table_entry = self.code.new_label()
-        self.scanner.symbol_table.insert(symbol_table_entry.lexeme)
-        return symbol_table_entry
+        """ generates new label
+
+        returns reference to symbol table entry of new label
+        """
+        label = self.code.new_label()
+        entry = self.scanner.symbol_table.insert(label)
+        return entry
+
+    def convert_optype_to_opcode(self, op_type):
+        if op_type == OpType.op_AND:
+            return CodeOp.cd_AND
+        elif op_type == OpType.op_MINUS:
+            return CodeOp.cd_SUB
+        elif op_type == OpType.op_DIV:
+            return CodeOp.cd_DIV
+        elif op_type == OpType.op_DIVIDE:
+            return CodeOp.cd_DIVIDE
+        elif op_type == OpType.op_EQ:
+            return CodeOp.cd_EQ
+        elif op_type == OpType.op_GE:
+            return CodeOp.cd_GE
+        elif op_type == OpType.op_GT:
+            return CodeOp.cd_GT
+        elif op_type == OpType.op_LE:
+            return CodeOp.cd_LE
+        elif op_type == OpType.op_MOD:
+            return CodeOp.cd_MOD
+        elif op_type == OpType.op_MULT:
+            return CodeOp.cd_MULT
+        elif op_type == OpType.op_NE:
+            return CodeOp.cd_NE
+        elif op_type == OpType.op_OR:
+            return CodeOp.cd_OR
+        elif op_type == OpType.op_PLUS:
+            return CodeOp.cd_ADD
+        elif op_type == OpType.op_NONE:
+            return CodeOp.cd_NOOP
+        elif op_type == OpType.op_LT:
+            return CodeOp.cd_LT
 
     def program(self):
         """ implements the CFG
@@ -238,6 +306,7 @@ class PascalParser:
 
         if not self.error:
             # program id
+            entry = self.token.symbol_table_entry
             self.match(TokenCode.tc_ID)
 
         if not self.error:
@@ -274,6 +343,8 @@ class PascalParser:
         if self.error:
             self.recover(NoneTerminal.nt_DECLARATIONS_FOLLOW)
 
+        self.code.generate(CodeOp.cd_GOTO, None, None, entry)
+
         # program id ( identifier_list ) ;
         # declarations
         # subprogram_declarations
@@ -282,6 +353,8 @@ class PascalParser:
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_SUBPROGRAM_DECLARATIONS_FOLLOW)
+
+        self.code.generate(CodeOp.cd_LABEL, None, None, entry)
 
         # program id ( identifier_list ) ;
         # declarations
@@ -298,7 +371,9 @@ class PascalParser:
         # subprogram_declarations
         # compound_statement
         # .
+        self.code.generate(CodeOp.cd_RETURN, None, None, None)
         self.match(TokenCode.tc_DOT)
+
 
         # if we had had error in last function we try to recover
         if self.error:
@@ -374,7 +449,7 @@ class PascalParser:
             entry_list = []
             self.identifier_list(entry_list)
             for entry in entry_list:
-                self.code.generate(CodeOp.cd_VAR, None, None, entry.lexeme)
+                self.code.generate(CodeOp.cd_VAR, None, None, entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -501,6 +576,7 @@ class PascalParser:
 
             # subprogram_declaration ;
             self.match(TokenCode.tc_SEMICOL)
+            self.code.generate(CodeOp.cd_RETURN, None, None, None)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -554,6 +630,8 @@ class PascalParser:
             self.match(TokenCode.tc_FUNCTION)
 
             # function id
+            entry = self.token.symbol_table_entry
+            self.code.generate(CodeOp.cd_LABEL, None, None, entry)
             self.match(TokenCode.tc_ID)
 
             # if we had had error in last function we try to recover
@@ -589,6 +667,8 @@ class PascalParser:
             self.match(TokenCode.tc_PROCEDURE)
 
             # procedure id
+            entry = self.token.symbol_table_entry
+            self.code.generate(CodeOp.cd_LABEL, None, None, entry)
             self.match(TokenCode.tc_ID)
 
             # if we had had error in last function we try to recover
@@ -639,7 +719,10 @@ class PascalParser:
            parameter_list      ::=     identifier_list : type parameter_list_marked
         """
         # identifier_list
-        self.identifier_list()
+        entry_list = []
+        self.identifier_list(entry_list)
+        for e in entry_list:
+            self.code.generate(CodeOp.cd_FPARAM, None, None, e)
 
         # if we had had error in last function we try to recover
         if self.error:
@@ -678,7 +761,10 @@ class PascalParser:
             self.match(TokenCode.tc_SEMICOL)
 
             # ; identifier_list
-            self.identifier_list()
+            entry_list = []
+            self.identifier_list(entry_list)
+            for e in entry_list:
+                self.code.generate(CodeOp.cd_FPARAM, None, None, e)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -823,7 +909,7 @@ class PascalParser:
             next = self.new_label()
             false = self.new_label()
             expression = self.expression()
-            self.code.generate(CodeOp.cd_EQ,expression.lexeme, "0", false.lexeme)
+            self.code.generate(CodeOp.cd_EQ, expression, "0", false)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -838,8 +924,8 @@ class PascalParser:
 
             # if expression then statement
             self.statement()
-            self.code.generate(CodeOp.cd_GOTO, None, None, next.lexeme)
-            self.code.generate(CodeOp.cd_LABEL, None, None, false.lexeme)
+            self.code.generate(CodeOp.cd_GOTO, None, None, next)
+            self.code.generate(CodeOp.cd_LABEL, None, None, false)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -854,7 +940,7 @@ class PascalParser:
 
             # if expression then statement else statement
             self.statement()
-            self.code.generate(CodeOp.cd_LABEL, None, None, next.lexeme)
+            self.code.generate(CodeOp.cd_LABEL, None, None, next)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -865,7 +951,11 @@ class PascalParser:
             self.match(TokenCode.tc_WHILE)
 
             # while expression
-            self.expression()
+            begin = self.new_label()
+            next = self.new_label()
+            self.code.generate(CodeOp.cd_LABEL, None, None, begin)
+            expression = self.expression()
+            self.code.generate(CodeOp.cd_EQ, expression, "0", next)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -880,6 +970,9 @@ class PascalParser:
 
             # while expression do statement
             self.statement()
+
+            self.code.generate(CodeOp.cd_GOTO, None, None, begin)
+            self.code.generate(CodeOp.cd_LABEL, None, None, next)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -935,7 +1028,7 @@ class PascalParser:
             # := expression
             result_entry = self.expression()
 
-            self.code.generate(CodeOp.cd_ASSIGN, result_entry.lexeme, None, entry.lexeme)
+            self.code.generate(CodeOp.cd_ASSIGN, result_entry, None, entry)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -946,7 +1039,11 @@ class PascalParser:
             self.match(TokenCode.tc_LPAREN)
 
             # ( expression_list
-            self.expression_list()
+            entry_list = []
+            self.expression_list(entry_list)
+            for e in entry_list:
+                self.code.generate(CodeOp.cd_APARAM, None, None, e)
+            self.code.generate(CodeOp.cd_CALL, entry, None, None)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -958,24 +1055,27 @@ class PascalParser:
         # ϵ
         else:
             pass
-    def expression_list(self):
+    def expression_list(self, entry_list=None):
         """ implements the CFG
 
            expression_list     ::=     expression expression_list_marked
         """
         # expression
-        self.expression()
+        entry = self.expression()
+        if not entry_list == None:
+            entry_list.append(entry)
+
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
-        self.expression_list_marked()
+        self.expression_list_marked(entry_list)
 
         # if we had had error in last function we try to recover
         if self.error:
             self.recover(NoneTerminal.nt_EXPRESSION_LIST_MARKED_FOLLOW)
-    def expression_list_marked(self):
+    def expression_list_marked(self, entry_list):
         """ inplements the CFG
 
            expression_list_marked      ::=     , expression expression_list_marked
@@ -988,14 +1088,16 @@ class PascalParser:
             self.match(TokenCode.tc_COMMA)
 
             # , expression
-            self.expression()
+            entry = self.expression()
+            if not entry_list == None:
+                entry_list.append(entry)
 
             # if we had had error in last function we try to recover
             if self.error:
                 self.recover(NoneTerminal.nt_EXPRESSION_FOLLOW)
 
             # , expression expression_list_marked
-            self.expression_list_marked()
+            self.expression_list_marked(entry_list)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1034,7 +1136,7 @@ class PascalParser:
 
         # relop
         if current_token_code == TokenCode.tc_RELOP:
-            op = self.token.op_type
+            op = self.convert_optype_to_opcode(self.get_op_type())
             self.match(TokenCode.tc_RELOP)
 
             # relop simple_expression
@@ -1042,12 +1144,12 @@ class PascalParser:
             result_entry = self.new_temp()
             true = self.new_label()
             next = self.new_label()
-            self.code.generate(op,entry.lexeme, entry2.lexeme, true.lexeme)
-            self.code.generate(CodeOp.cd_ASSIGN,"0", None, result_entry.lexeme)
-            self.code.generate(CodeOp.cd_GOTO, None, None, next.lexeme)
-            self.code.generate(CodeOp.cd_LABEL, None, None, true.lexeme)
-            self.code.generate(CodeOp.cd_ASSIGN, "1", None, result_entry.lexeme)
-            self.code.generate(CodeOp.cd_LABEL, None, None, next.lexeme)
+            self.code.generate(op,entry, entry2, true)
+            self.code.generate(CodeOp.cd_ASSIGN,"0", None, result_entry)
+            self.code.generate(CodeOp.cd_GOTO, None, None, next)
+            self.code.generate(CodeOp.cd_LABEL, None, None, true)
+            self.code.generate(CodeOp.cd_ASSIGN, "1", None, result_entry)
+            self.code.generate(CodeOp.cd_LABEL, None, None, next)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1078,7 +1180,7 @@ class PascalParser:
             # sign term
             entry = self.term()
             new_temp = self.new_temp()
-            self.code.generate(CodeOp.cd_UMINUS, entry.lexeme, None, new_temp.lexeme)
+            self.code.generate(CodeOp.cd_UMINUS, entry, None, new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1128,13 +1230,13 @@ class PascalParser:
 
         # addop
         if current_token_code == TokenCode.tc_ADDOP:
-            op = self.token.op_type
+            op =  self.convert_optype_to_opcode(self.get_op_type())
             self.match(TokenCode.tc_ADDOP)
 
             # addop term
             entry2 = self.term()
             new_temp = self.new_temp()
-            self.code.generate(op, entry.lexeme, entry2.lexeme, new_temp.lexeme)
+            self.code.generate(op, entry, entry2, new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1182,13 +1284,13 @@ class PascalParser:
 
         # mulop
         if current_token_code == TokenCode.tc_MULOP:
-            op = self.token.op_type
+            op = self.convert_optype_to_opcode(self.get_op_type())
             self.match(TokenCode.tc_MULOP)
 
             # mulop factor
             entry2 = self.factor()
             new_temp = self.new_temp()
-            self.code.generate(op, entry.lexeme, entry2.lexeme, new_temp.lexeme)
+            self.code.generate(op, entry, entry2, new_temp)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1281,12 +1383,18 @@ class PascalParser:
             self.match(TokenCode.tc_LPAREN)
 
             # ( expression_list
-            result_entry = self.expression_list()
+            entry_list = []
+            self.expression_list(entry_list)
+            for e in entry_list:
+                self.code.generate(CodeOp.cd_APARAM, None, None, e)
+            self.code.generate(CodeOp.cd_CALL, entry, None, None)
+
             if self.error:
                 self.recover(NoneTerminal.nt_EXPRESSION_LIST_FOLLOW)
 
             # ( expression_list )
             self.match(TokenCode.tc_RPAREN)
+            result_entry = entry
 
         # [
         elif current_token_code == TokenCode.tc_LBRACK:
@@ -1330,18 +1438,58 @@ class PascalParserTester:
         filename = "test_files/pas_syntax_ok"
         parser = PascalParser(filename)
         parser.program()
+        print parser
 
     def testProgramError(self):
         filename = "test_files/pas_syntax_err"
         parser = PascalParser(filename)
         parser.program()
+        print parser
 
     def testProgramCode(self):
         filename = "test_files/code"
         parser = PascalParser(filename)
         parser.program()
+        print parser
+
+    def testProgramCodeIf(self):
+        filename = "test_files/pas_code_if"
+        parser = PascalParser(filename)
+        parser.program()
+        print parser
+
+    def testProgramCodeWhile(self):
+        filename = "test_files/pas_code_while"
+        parser = PascalParser(filename)
+        parser.program()
+        print parser
+
+    def testProgramCodeAnd(self):
+        filename = "test_files/pas_code_and"
+        parser = PascalParser(filename)
+        parser.program()
+        print parser
+
+    def testProgramCodeFact(self):
+        filename = "test_files/pas_code_fact"
+        parser = PascalParser(filename)
+        parser.program()
+        print parser
+
+    def testProgramCodeFunc(self):
+        filename = "test_files/pas_code_func"
+        parser = PascalParser(filename)
+        parser.program()
+        print parser
+
 
 tester = PascalParserTester()
 #tester.testProgramCorrect()
-#tester.testProgramError()
-tester.testProgramCode()
+tester.testProgramError()
+#tester.testProgramCodeIf()
+#tester.testProgramCodeWhile()
+#tester.testProgramCodeAnd()
+#tester.testProgramCodeFact()
+#tester.testProgramCodeFunc()
+
+#tester.testProgramCode()
