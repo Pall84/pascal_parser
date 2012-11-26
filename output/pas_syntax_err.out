@@ -1,0 +1,96 @@
+﻿C:\Python27\python.exe D:/Skoli/THID/Pascal/pascal_parser/Tester.py
+  1: Program test(input output;
+                        ^ Expected ")"
+  2: {A program with syntax errors}
+  3: Var x : integer
+  4: Var y : real;
+     ^ Expected ";"
+  5: 
+  6: function ftest(x:integer) : real;
+  7: var t : array[1..10 of real;
+                         ^ Expected "]"
+  8: var i  integer;
+            ^ Expected ":"
+  9: begin
+ 10:         i := 0;
+ 11:         t[1] := -2.0*y;
+ 12:         while (i < 4 do
+                          ^ Expected ")"
+ 13:           i := i + 1;
+ 14:         ftest := t[1;
+                         ^ Expected "]"
+ 15: end;
+     ^ Expected "STATEMENT"
+ 16: 
+ 17: begin
+ 18:     y := 2.0*(3.14!$);
+                       ^ Illegal character
+                        ^ Illegal character
+ 19:     if y>2.0
+ 20: 	begin
+     	^ Expected "THEN"
+ 21: 		y := 123.45E-3;
+ 22: 		x := x + 1
+ 23: 	end
+ 24: 	else
+ 25: 	begin
+ 26: 		y := ftest(x);
+ 27: 		y := y+2.0
+ 28: 	end; 
+ 29: 
+ 30: 	while (x<4) 
+ 31: 	begin
+     	^ Expected "DO"
+ 32: 	   y := ftest (x;
+     	                ^ Expected ")"
+ 33: 	   x := x + 
+ 34: 	end
+     	^ Expected "FACTOR"
+ 35: .
+     ^ Expected "END"
+ 36:  
+ 37: 
+
+
+Number of errors: 14
+
+ Entry         Lexeme
+     1              0
+     2              1
+     3           test
+     4          input
+     5         output
+     6              x
+     7              y
+     8          ftest
+     9              t
+    10             10
+    11              i
+    12            2.0
+    13             t1
+    14             t2
+    15           lab1
+    16           lab2
+    17              4
+    18             t3
+    19           lab3
+    20           lab4
+    21             t4
+    22           3.14
+    23             t5
+    24           lab5
+    25           lab6
+    26             t6
+    27           lab7
+    28           lab8
+    29        123.45E
+    30              3
+    31             t7
+    32             t8
+    33             t9
+    34           lab9
+    35          lab10
+    36            t10
+    37          lab11
+    38          lab12
+    39            t11

@@ -7,10 +7,13 @@ from Parser import  PascalParserTester
 
 tester = PascalParserTester()
 
+tester.testProgramError()
+
+"""
 tester.testProgramCorrect()
 tester.print_out()
 
-#tester.testProgramError()
+
 
 tester.testProgramCodeIf()
 tester.print_out()
@@ -27,3 +30,4 @@ tester.print_out()
 tester.testProgramCodeFunc()
 tester.print_out()
 
+"""
