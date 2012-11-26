@@ -1,0 +1,43 @@
+                 VAR                             X
+                 VAR                             y
+                GOTO                          test
+     test:    FPARAM                             x
+                 VAR                             t
+                 VAR                             I
+              ASSIGN         0                   i
+                 VAR                            t1
+                MULT       2.0         x        t1
+                 VAR                            t2
+              UMINUS        t1                  t2
+     lab1:       VAR                            t3
+                  LT         i         4      lab3
+              ASSIGN         0                  t3
+                GOTO                          lab4
+     lab3:    ASSIGN         1                  t3
+     lab4:        EQ        t3         0      lab2
+                 VAR                            t4
+                 ADD         i         1        t4
+              ASSIGN        t4                   i
+                GOTO                          lab1
+     lab2:    ASSIGN         1                test
+              RETURN                              
+     test:       VAR                            t5
+                MULT       2.0      3.14        t5
+              ASSIGN        t5                   y
+                 VAR                            t6
+                  GT         x         2      lab7
+              ASSIGN         0                  t6
+                GOTO                          lab8
+     lab7:    ASSIGN         1                  t6
+     lab8:        EQ        t6         0      lab6
+                 VAR                            t7
+                 SUB   123.45E         3        t7
+              ASSIGN        t7                   y
+                GOTO                          lab5
+     lab6:    APARAM                           3.3
+                CALL      test                    
+              ASSIGN      test                   y
+                 VAR                            t8
+                 ADD         x         2        t8
+              ASSIGN        t8                   x
+     lab5:    RETURN                              

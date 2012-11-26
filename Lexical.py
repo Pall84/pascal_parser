@@ -25,88 +25,88 @@ class Lexicons:
         id = letter + Rep( letter | digits)
         int_num = digits
         optional_fraction = Opt(Str(".") + int_num)
-        optional_exponent = Opt(Str("E") + Opt(Str("+")|Str("-")) + int_num )
+        optional_exponent = Opt(Str("E")|Str("e") + Opt(Str("+")|Str("-")) + int_num )
         real_num = int_num + optional_fraction + optional_exponent
         comment = Str("{") + Rep(AnyChar) + Str("}")
 
         lexicon = Lexicon([
 
             # keywords                     tokencode            datatype            optype
-            (NoCase(Str("program")),    (TokenCode.tc_PROGRAM, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("var")),        (TokenCode.tc_VAR, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("array")),      (TokenCode.tc_ARRAY, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("of")),         (TokenCode.tc_OF, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("integer")),    (TokenCode.tc_INTEGER, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("real")),       (TokenCode.tc_REAL, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("function")),   (TokenCode.tc_FUNCTION, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("procedure")),  (TokenCode.tc_PROCEDURE, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("begin")),      (TokenCode.tc_BEGIN, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("end")),        (TokenCode.tc_END, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("if")),         (TokenCode.tc_IF, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("then")),       (TokenCode.tc_THEN, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("else")),       (TokenCode.tc_ELSE, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("while")),      (TokenCode.tc_WHILE, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("do")),         (TokenCode.tc_DO, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (NoCase(Str("not")),        (TokenCode.tc_NOT, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str(':'),                  (TokenCode.tc_COLON, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str(';'),                  (TokenCode.tc_SEMICOL, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str(','),                  (TokenCode.tc_COMMA, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str('..'),                 (TokenCode.tc_DOTDOT, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str('.'),                  (TokenCode.tc_DOT, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str('('),                  (TokenCode.tc_LPAREN, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str('['),                  (TokenCode.tc_LBRACK, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str(')'),                  (TokenCode.tc_RPAREN, DataType.dt_KEYWORD, OpType.op_NONE)),
-            (Str(']'),                  (TokenCode.tc_RBRACK, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("program")),    Token(TokenCode.tc_PROGRAM, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("var")),        Token(TokenCode.tc_VAR, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("array")),      Token(TokenCode.tc_ARRAY, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("of")),         Token(TokenCode.tc_OF, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("integer")),    Token(TokenCode.tc_INTEGER, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("real")),       Token(TokenCode.tc_REAL, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("function")),   Token(TokenCode.tc_FUNCTION, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("procedure")),  Token(TokenCode.tc_PROCEDURE, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("begin")),      Token(TokenCode.tc_BEGIN, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("end")),        Token(TokenCode.tc_END, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("if")),         Token(TokenCode.tc_IF, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("then")),       Token(TokenCode.tc_THEN, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("else")),       Token(TokenCode.tc_ELSE, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("while")),      Token(TokenCode.tc_WHILE, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("do")),         Token(TokenCode.tc_DO, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (NoCase(Str("not")),        Token(TokenCode.tc_NOT, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str(':'),                  Token(TokenCode.tc_COLON, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str(';'),                  Token(TokenCode.tc_SEMICOL, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str(','),                  Token(TokenCode.tc_COMMA, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str('..'),                 Token(TokenCode.tc_DOTDOT, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str('.'),                  Token(TokenCode.tc_DOT, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str('('),                  Token(TokenCode.tc_LPAREN, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str('['),                  Token(TokenCode.tc_LBRACK, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str(')'),                  Token(TokenCode.tc_RPAREN, DataType.dt_KEYWORD, OpType.op_NONE)),
+            (Str(']'),                  Token(TokenCode.tc_RBRACK, DataType.dt_KEYWORD, OpType.op_NONE)),
 
             # numbers
-            (int_num,                   (TokenCode.tc_NUMBER, DataType.dt_INTEGER, OpType.op_NONE)),
-            (real_num,                  (TokenCode.tc_NUMBER, DataType.dt_REAL, OpType.op_NONE)),
+            (int_num,                   Token(TokenCode.tc_NUMBER, DataType.dt_INTEGER, OpType.op_NONE)),
+            (real_num,                  Token(TokenCode.tc_NUMBER, DataType.dt_REAL, OpType.op_NONE)),
 
             # relop
-            (Str("="),                  (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_EQ)),
-            (Str("<>"),                 (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_NE)),
-            (Str("<"),                  (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_LT)),
-            (Str("<="),                 (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_LE)),
-            (Str(">="),                 (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_GE)),
-            (Str(">"),                  (TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_GT)),
+            (Str("="),                  Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_EQ)),
+            (Str("<>"),                 Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_NE)),
+            (Str("<"),                  Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_LT)),
+            (Str("<="),                 Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_LE)),
+            (Str(">="),                 Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_GE)),
+            (Str(">"),                  Token(TokenCode.tc_RELOP, DataType.dt_OP, OpType.op_GT)),
 
             # addop
-            (Str("-"),                  (TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_MINUS)),
-            (Str("+"),                  (TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_PLUS)),
-            (NoCase(Str("or")),         (TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_OR)),
+            (Str("-"),                  Token(TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_MINUS)),
+            (Str("+"),                  Token(TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_PLUS)),
+            (NoCase(Str("or")),         Token(TokenCode.tc_ADDOP, DataType.dt_OP, OpType.op_OR)),
 
             # mulop
-            (Str("/"),                  (TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_DIVIDE)),
-            (Str("*"),                  (TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_MULT)),
-            (NoCase(Str("div")),        (TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_DIV)),
-            (NoCase(Str("mod")),        (TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_MOD)),
-            (NoCase(Str("and")),        (TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_AND)),
+            (Str("/"),                  Token(TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_DIVIDE)),
+            (Str("*"),                  Token(TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_MULT)),
+            (NoCase(Str("div")),        Token(TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_DIV)),
+            (NoCase(Str("mod")),        Token(TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_MOD)),
+            (NoCase(Str("and")),        Token(TokenCode.tc_MULOP, DataType.dt_OP, OpType.op_AND)),
 
             # assignop
-            (Str(':='),                 (TokenCode.tc_ASSIGNOP, DataType.dt_OP, OpType.op_NONE)),
+            (Str(':='),                 Token(TokenCode.tc_ASSIGNOP, DataType.dt_OP, OpType.op_NONE)),
 
-            (id,                        (TokenCode.tc_ID, DataType.dt_ID, OpType.op_NONE)),
-            (comment,                   (TokenCode.tc_COMMENT, DataType.dt_NONE, OpType.op_NONE)),
-            (Str("\t"),                 (TokenCode.tc_TAB, DataType.dt_NONE, OpType.op_NONE)),
-            (Str(" "),                  (TokenCode.tc_SPACE, DataType.dt_NONE, OpType.op_NONE)),
-            (Any("\n\r"),               (TokenCode.tc_NEWLINE, DataType.dt_NONE, OpType.op_NONE)),
-            (AnyChar,                   (TokenCode.tc_ERROR, DataType.dt_NONE, OpType.op_NONE))
+            (id,                        Token(TokenCode.tc_ID, DataType.dt_ID, OpType.op_NONE)),
+            (comment,                   Token(TokenCode.tc_COMMENT, DataType.dt_NONE, OpType.op_NONE)),
+            (Str("\t"),                 Token(TokenCode.tc_TAB, DataType.dt_NONE, OpType.op_NONE)),
+            (Str(" "),                  Token(TokenCode.tc_SPACE, DataType.dt_NONE, OpType.op_NONE)),
+            (Any("\n\r"),               Token(TokenCode.tc_NEWLINE, DataType.dt_NONE, OpType.op_NONE)),
+            (AnyChar,                   Token(TokenCode.tc_ERROR, DataType.dt_NONE, OpType.op_NONE))
         ])
         return lexicon
 
 class Token:
     """ class for storing information about token for lexeme
 
-    stores token code, data type, op type, line lexeme is in, distance from start of line,
-    lexeme and pointer to where token is in symbol table.
+    stores token code, data type, op type, row data_value is in, distance from start of line,
+    data_value and pointer to where token is in symbol table.
     """
-    def __init__(self, token_code="", data_type="", op_type="", line=-1, col=-1, lexeme=""):
+    def __init__(self, token_code="", data_type="", op_type="", row=-1, col=-1, data_value=""):
         self.token_code = token_code
         self.data_type = data_type
         self.op_type = op_type
-        self.line = line
+        self.row = row
         self.col = col
-        self.lexeme = lexeme
+        self.data_value = data_value
         self.symbol_table_entry = None
 
 class SymbolTable:
@@ -213,7 +213,7 @@ class SourceLine:
             self.lineNr += 1
             self.tabs = 0
         else:
-            self.line += token.lexeme
+            self.line += token.data_value
 
         if token.token_code == TokenCode.tc_TAB:
             self.tabs += 1
@@ -259,8 +259,8 @@ class PascalScanner:
         initializer source line.
         """
         lexer = Lexicons().get_lexer()
-        f = open(filename, "r")
-        self.scanner = Scanner(lexer, f, filename)
+        self.f = open(filename, "r")
+        self.scanner = Scanner(lexer, self.f, filename)
         self.symbol_table = SymbolTable()
         self.source_line = SourceLine()
 
@@ -279,30 +279,35 @@ class PascalScanner:
 
         return self.source_line.__str__() + error_number_str + "\n\n" + self.symbol_table.__str__()
 
+    def __del__(self):
+        self.f.close()
+
     def next_token(self):
         """ returns next token in source code.
 
-        asks plex scanner for next lexicon in input. plex scanner returns tuple containing
-        tuple and lexeme on the format. ( ( token_coce, data_type, op_type ) lexeme ).
-        we map those values into Token class. and if token is space, tab or newline we call recursively
-        our self and return the Token that call returns. If plex returns None we know we have reached
+        asks plex scanner for next lexicon in input. plex scanner returns tuple
+        containing Token and lexeme on the format. ( Token, lexeme ).
+        if token is space, tab or newline we call recursively our self and return
+        the Token that call returns. If plex returns None we know we have reached
         end of file and do noting.
-
         """
 
         temp = self.scanner.read()
+        token = temp[0]
 
         # verify plex scanner returns something.
         # returns None at end of file <EOF>.
-        if temp[0]:
-            token_code = temp[0][0]
+        if token:
+            # map location from scanner into Token.
+            token.line = self.scanner.start_line
+            token.col = self.scanner.start_col
+            token.data_value = temp[1]
 
-            # map data from temp variable into Token.
-            token = Token(temp[0][0], temp[0][1], temp[0][2], self.scanner.start_line, self.scanner.start_col, temp[1])
+            token_code = token.token_code
 
             # insert into symbol table if lexeme is number or id.
             if token_code == TokenCode.tc_ID or token_code == TokenCode.tc_NUMBER:
-                token.symbol_table_entry = self.symbol_table.insert(token.lexeme)
+                token.symbol_table_entry = self.symbol_table.insert(token.data_value)
 
             # add token to source line for logging.
             self.source_line.add_token(token)
@@ -331,6 +336,7 @@ class PascalScanner:
         token = Token()
         token.token_code = TokenCode.tc_NEWLINE
         self.source_line.add_token(token)
+        return None
 
     def add_error(self, error, spaces):
         """ adds error to source line. """
@@ -343,9 +349,25 @@ class PascalScannerTester:
     def __init__(self):
         scanner = PascalScanner("test_files/lex_test")
         token = scanner.next_token()
+        word_counter = 10
+        temp_line = ""
         while token:
+            word = ""
+            if token.data_type == DataType.dt_KEYWORD or token.data_type == DataType.dt_NONE:
+                word = token.token_code
+            else:
+                word = token.token_code + "(" + token.data_value + ")"
+
+            if word_counter < 1:
+                print temp_line
+                temp_line=word
+                word_counter = 10
+            else:
+                temp_line += " " + word
+                word_counter -=1
             token = scanner.next_token()
+        print temp_line + "\n"
+        print scanner.symbol_table
 
-        print scanner
+        #print scanner
 
-#lex_tester = PascalScannerTester()

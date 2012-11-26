@@ -85,4 +85,9 @@ class Code:
         quadruple = Quadruple(op, arg1, arg2, result)
         self.quadrople_list.append(quadruple)
 
+    def print_out(self, filename):
+        file = open("output/"+filename, "w")
+        file.write(self.__str__())
+        file.close()
+
 

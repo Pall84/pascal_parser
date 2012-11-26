@@ -248,7 +248,7 @@ class PascalParser:
         """
         temp = self.code.new_temp()
         entry =  self.scanner.symbol_table.insert(temp)
-        self.code.generate(CodeOp.cd_VAR, None, None, temp)
+        self.code.generate(CodeOp.cd_VAR, None, None, entry)
         return entry
 
     def new_label(self):
@@ -909,7 +909,8 @@ class PascalParser:
             next = self.new_label()
             false = self.new_label()
             expression = self.expression()
-            self.code.generate(CodeOp.cd_EQ, expression, "0", false)
+            false_entry = self.scanner.symbol_table.lookup("0")
+            self.code.generate(CodeOp.cd_EQ, expression, false_entry, false)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -953,9 +954,10 @@ class PascalParser:
             # while expression
             begin = self.new_label()
             next = self.new_label()
+            false_entry = self.scanner.symbol_table.lookup("0")
             self.code.generate(CodeOp.cd_LABEL, None, None, begin)
             expression = self.expression()
-            self.code.generate(CodeOp.cd_EQ, expression, "0", next)
+            self.code.generate(CodeOp.cd_EQ, expression, false_entry, next)
 
             # if we had had error in last function we try to recover
             if self.error:
@@ -1144,11 +1146,13 @@ class PascalParser:
             result_entry = self.new_temp()
             true = self.new_label()
             next = self.new_label()
+            false_entry = self.scanner.symbol_table.lookup("0")
+            true_entry = self.scanner.symbol_table.lookup("1")
             self.code.generate(op,entry, entry2, true)
-            self.code.generate(CodeOp.cd_ASSIGN,"0", None, result_entry)
+            self.code.generate(CodeOp.cd_ASSIGN,false_entry, None, result_entry)
             self.code.generate(CodeOp.cd_GOTO, None, None, next)
             self.code.generate(CodeOp.cd_LABEL, None, None, true)
-            self.code.generate(CodeOp.cd_ASSIGN, "1", None, result_entry)
+            self.code.generate(CodeOp.cd_ASSIGN, true_entry, None, result_entry)
             self.code.generate(CodeOp.cd_LABEL, None, None, next)
 
             # if we had had error in last function we try to recover
@@ -1435,61 +1439,52 @@ class PascalParser:
 
 class PascalParserTester:
     def testProgramCorrect(self):
-        filename = "test_files/pas_syntax_ok"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_syntax_ok"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramError(self):
-        filename = "test_files/pas_syntax_err"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_syntax_err"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCode(self):
-        filename = "test_files/code"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "code"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCodeIf(self):
-        filename = "test_files/pas_code_if"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_code_if"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCodeWhile(self):
-        filename = "test_files/pas_code_while"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_code_while"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCodeAnd(self):
-        filename = "test_files/pas_code_and"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_code_and"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCodeFact(self):
-        filename = "test_files/pas_code_fact"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_code_fact"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
     def testProgramCodeFunc(self):
-        filename = "test_files/pas_code_func"
-        parser = PascalParser(filename)
-        parser.program()
-        print parser
+        self.filename = "pas_code_func"
+        self.parser = PascalParser("test_files/"+self.filename)
+        self.parser.program()
+        print self.parser
 
-
-tester = PascalParserTester()
-#tester.testProgramCorrect()
-tester.testProgramError()
-#tester.testProgramCodeIf()
-#tester.testProgramCodeWhile()
-#tester.testProgramCodeAnd()
-#tester.testProgramCodeFact()
-#tester.testProgramCodeFunc()
-
-#tester.testProgramCode()
+    def print_out(self):
+        self.parser.code.print_out(self.filename)
